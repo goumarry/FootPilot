@@ -1,0 +1,291 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  GESTIONNAIRE
+  ENTRAINEUR
+  JOUEUR
+}
+
+enum Poste {
+  DEF
+  MIL
+  ATT
+  GB
+}
+
+enum StatutMatch {
+  AVENIR
+  TERMINE
+  ANNULE
+}
+
+enum TypeEvenement {
+  MATCH
+  ENTRAINEMENT
+}
+
+enum StatutPresence {
+  PRESENT
+  ABSENT_JUSTIFIE
+  ABSENT_NON_JUSTIFIE
+  RETARD
+}
+
+enum ZoneTir {
+  TETE
+  PIED_GAUCHE
+  PIED_DROIT
+}
+
+enum Circonstance {
+  JEU_OUVERT
+  COUP_FRANC
+  PENALTY
+}
+
+model User {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  password   String
+  firstName  String
+  lastName   String
+  role       Role      @default(JOUEUR)
+  birthDate  DateTime?
+  profilePic String?
+  phone      String?
+  isActive   Boolean   @default(true)
+  clubId     String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  club               Club?        @relation(fields: [clubId], references: [id])
+  invitationsCreated Invitation[] @relation("InvitationCreator")
+  actualites         Actualite[]  @relation("ActualiteAuteur")
+  joueurProfile      Joueur?
+  entraineurProfile  Entraineur?
+}
+
+model Club {
+  id          String   @id @default(cuid())
+  nom         String
+  ville       String
+  logoUrl     String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  categories  Categorie[]
+  equipes     Equipe[]
+  joueurs     Joueur[]
+  entraineurs Entraineur[]
+  invitations Invitation[]
+  actualites  Actualite[]
+}
+
+model Categorie {
+  id     String @id @default(cuid())
+  clubId String
+  nom    String
+
+  club          Club           @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  equipes       Equipe[]
+  entrainements Entrainement[]
+}
+
+model Equipe {
+  id                String  @id @default(cuid())
+  clubId            String
+  categorieId       String
+  nomEquipe         String
+  niveauChampionnat String?
+
+  club      Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  categorie Categorie @relation(fields: [categorieId], references: [id])
+
+  joueurs     JoueurEquipe[]
+  entraineurs EntraineurEquipe[]
+  evenements  Evenement[]
+  matchsDom   Match[]            @relation("MatchDomicile")
+  matchsExt   Match[]            @relation("MatchExterieur")
+  actualites  Actualite[]
+}
+
+model Joueur {
+  id            String    @id @default(cuid())
+  userId        String?   @unique
+  clubId        String
+  firstName     String
+  lastName      String
+  birthDate     DateTime
+  poste         Poste?
+  numeroMaillot Int?
+  photoUrl      String?
+
+  user  User?  @relation(fields: [userId], references: [id])
+  club  Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  equipes      JoueurEquipe[]
+  presences    PresenceEntrainement[]
+  convocations ConvocationMatch[]
+  butsMarques  But[]                  @relation("ButsMarques")
+  butsPasses   But[]                  @relation("ButsPasses")
+}
+
+model Entraineur {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  clubId    String
+  firstName String
+  lastName  String
+  phone     String?
+  photoUrl  String?
+
+  user    User             @relation(fields: [userId], references: [id])
+  club    Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  equipes EntraineurEquipe[]
+}
+
+model JoueurEquipe {
+  joueurId  String
+  equipeId  String
+  dateDebut DateTime  @default(now())
+  dateFin   DateTime?
+
+  joueur Joueur @relation(fields: [joueurId], references: [id], onDelete: Cascade)
+  equipe Equipe @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+
+  @@id([joueurId, equipeId])
+}
+
+model EntraineurEquipe {
+  entraineurId String
+  equipeId     String
+
+  entraineur Entraineur @relation(fields: [entraineurId], references: [id], onDelete: Cascade)
+  equipe     Equipe     @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+
+  @@id([entraineurId, equipeId])
+}
+
+model Evenement {
+  id          String        @id @default(cuid())
+  type        TypeEvenement
+  equipeId    String
+  dateHeure   DateTime
+  lieu        String?
+  latitude    Float?
+  longitude   Float?
+  description String?
+  createdAt   DateTime      @default(now())
+
+  equipe       Equipe        @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  match        Match?
+  entrainement Entrainement?
+}
+
+model Match {
+  id                String      @id
+  equipesDomId      String
+  equipesExtId      String
+  scoreDom          Int?
+  scoreExt          Int?
+  statut            StatutMatch @default(AVENIR)
+  placesCovoiturage Int?        @default(0)
+
+  evenement Evenement @relation(fields: [id], references: [id], onDelete: Cascade)
+  equipeDom Equipe    @relation("MatchDomicile", fields: [equipesDomId], references: [id])
+  equipeExt Equipe    @relation("MatchExterieur", fields: [equipesExtId], references: [id])
+
+  buts         But[]
+  convocations ConvocationMatch[]
+}
+
+model Entrainement {
+  id          String  @id
+  categorieId String?
+
+  evenement Evenement  @relation(fields: [id], references: [id], onDelete: Cascade)
+  categorie Categorie? @relation(fields: [categorieId], references: [id])
+
+  presences PresenceEntrainement[]
+}
+
+model PresenceEntrainement {
+  entrainementId String
+  joueurId       String
+  statut         StatutPresence
+  commentaire    String?
+
+  entrainement Entrainement @relation(fields: [entrainementId], references: [id], onDelete: Cascade)
+  joueur       Joueur       @relation(fields: [joueurId], references: [id], onDelete: Cascade)
+
+  @@id([entrainementId, joueurId])
+}
+
+model ConvocationMatch {
+  matchId           String
+  joueurId          String
+  note              Int?
+  commentaire       String?
+  estAccompagnateur Boolean @default(false)
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  joueur Joueur @relation(fields: [joueurId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, joueurId])
+}
+
+model But {
+  id           String        @id @default(cuid())
+  matchId      String
+  buteurId     String
+  passeurId    String?
+  minute       Int?
+  zoneTir      ZoneTir?
+  circonstance Circonstance?
+  estCSC       Boolean       @default(false)
+
+  match   Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  buteur  Joueur  @relation("ButsMarques", fields: [buteurId], references: [id])
+  passeur Joueur? @relation("ButsPasses", fields: [passeurId], references: [id])
+}
+
+model Actualite {
+  id        String   @id @default(cuid())
+  auteurId  String
+  clubId    String
+  equipeId  String?
+  titre     String
+  contenu   String
+  createdAt DateTime @default(now())
+
+  auteur User    @relation("ActualiteAuteur", fields: [auteurId], references: [id])
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  equipe Equipe? @relation(fields: [equipeId], references: [id])
+}
+
+model Invitation {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  email     String?
+  firstName String?
+  lastName  String?
+  role      Role      @default(JOUEUR)
+  createdBy String
+  clubId    String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  creator User  @relation("InvitationCreator", fields: [createdBy], references: [id])
+  club    Club? @relation(fields: [clubId], references: [id])
+}
