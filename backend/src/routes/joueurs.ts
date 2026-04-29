@@ -7,6 +7,20 @@ import { verifyToken, requireRole } from '../middleware/auth';
 const router = Router();
 router.use(verifyToken);
 
+// Normalise les noms d'un joueur : priorité au User lié, sinon aux champs directs (ajout manuel).
+function normalizeJoueur<T extends {
+  firstName: string | null;
+  lastName: string | null;
+  user?: { firstName: string; lastName: string } | null;
+}>(j: T): Omit<T, 'user'> & { firstName: string; lastName: string } {
+  const { user, ...rest } = j as T & { user?: unknown };
+  return {
+    ...rest,
+    firstName: (j.user?.firstName ?? j.firstName) ?? '',
+    lastName: (j.user?.lastName ?? j.lastName) ?? '',
+  } as Omit<T, 'user'> & { firstName: string; lastName: string };
+}
+
 const joueurSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
@@ -16,24 +30,25 @@ const joueurSchema = z.object({
   photoUrl: z.string().url().optional().or(z.literal('')),
 });
 
+const joueurInclude = {
+  user: { select: { firstName: true, lastName: true } },
+  equipes: {
+    where: { dateFin: null as null },
+    include: { equipe: { select: { id: true, nomEquipe: true } } },
+  },
+} as const;
+
 // GET /api/joueurs
-router.get('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.get('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const clubId = req.user!.clubId;
-  if (!clubId && req.user!.role !== Role.ADMIN) {
-    return res.status(400).json({ message: 'Club requis.' });
-  }
+  if (!clubId) return res.status(400).json({ message: 'Club requis.' });
 
   const joueurs = await prisma.joueur.findMany({
-    where: clubId ? { clubId } : {},
-    include: {
-      equipes: {
-        where: { dateFin: null },
-        include: { equipe: { select: { id: true, nomEquipe: true } } },
-      },
-    },
-    orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    where: { clubId },
+    include: joueurInclude,
+    orderBy: { birthDate: 'asc' },
   });
-  return res.json(joueurs);
+  return res.json(joueurs.map(normalizeJoueur));
 });
 
 // GET /api/joueurs/:id
@@ -41,6 +56,7 @@ router.get('/:id', async (req, res) => {
   const joueur = await prisma.joueur.findUnique({
     where: { id: req.params.id },
     include: {
+      user: { select: { firstName: true, lastName: true } },
       equipes: {
         where: { dateFin: null },
         include: { equipe: { select: { id: true, nomEquipe: true, categorie: true } } },
@@ -48,11 +64,11 @@ router.get('/:id', async (req, res) => {
     },
   });
   if (!joueur) return res.status(404).json({ message: 'Joueur introuvable.' });
-  return res.json(joueur);
+  return res.json(normalizeJoueur(joueur));
 });
 
-// POST /api/joueurs
-router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+// POST /api/joueurs — ajout manuel (sans compte utilisateur)
+router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = joueurSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -76,7 +92,7 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), as
 });
 
 // PUT /api/joueurs/:id
-router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = joueurSchema.partial().safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -84,7 +100,7 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), 
 
   const joueur = await prisma.joueur.findUnique({ where: { id: req.params.id } });
   if (!joueur) return res.status(404).json({ message: 'Joueur introuvable.' });
-  if (joueur.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (joueur.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
@@ -96,15 +112,16 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), 
       birthDate: birthDate ? new Date(birthDate) : undefined,
       photoUrl: parsed.data.photoUrl || undefined,
     },
+    include: { user: { select: { firstName: true, lastName: true } } },
   });
-  return res.json(updated);
+  return res.json(normalizeJoueur(updated));
 });
 
 // DELETE /api/joueurs/:id
-router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const joueur = await prisma.joueur.findUnique({ where: { id: req.params.id } });
   if (!joueur) return res.status(404).json({ message: 'Joueur introuvable.' });
-  if (joueur.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (joueur.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 

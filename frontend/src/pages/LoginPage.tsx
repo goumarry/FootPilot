@@ -24,7 +24,7 @@ export default function LoginPage() {
       const { token, user } = await login(email, password);
       setAuth(token, user);
       navigate(
-        user.role === 'ADMIN' || user.role === 'GESTIONNAIRE' ? '/admin' : '/dashboard',
+        user.role === 'JOUEUR' ? '/dashboard' : '/admin',
         { replace: true }
       );
     } catch (err: unknown) {
@@ -44,14 +44,13 @@ export default function LoginPage() {
         <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
           <Activity size={18} className="text-violet-400" />
         </div>
-        <span className="text-base font-bold text-slate-200">FootPilot</span>
+        <span className="text-base font-bold text-slate-700 dark:text-slate-200">FootPilot</span>
       </div>
 
-      <div className="bg-slate-800/50 border border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm">
-        {/* Header */}
+      <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm shadow-sm">
         <div className="mb-7">
-          <h1 className="text-2xl font-extrabold text-slate-50 mb-1.5 tracking-tight">Connexion</h1>
-          <p className="text-sm text-slate-400">Accédez à votre espace club</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">Connexion</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Accédez à votre espace club</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -77,13 +76,13 @@ export default function LoginPage() {
           />
 
           <div className="flex justify-end mb-5 -mt-2">
-            <button type="button" className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors">
+            <button type="button" className="text-xs text-violet-500 hover:text-violet-400 font-medium transition-colors">
               Mot de passe oublié ?
             </button>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2.5 mb-4 px-4 py-3 bg-red-500/10 border border-red-500/25 rounded-xl text-sm text-red-400">
+            <div className="flex items-center gap-2.5 mb-4 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25 rounded-xl text-sm text-red-600 dark:text-red-400">
               <AlertCircle size={15} className="flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -95,17 +94,20 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-slate-700/40 text-center text-sm text-slate-500">
-          Pas de compte ?{' '}
-          <Link to="/register" className="text-violet-400 hover:text-violet-300 font-semibold transition-colors">
-            Lien d'invitation
+        <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/40 text-center">
+          <Link
+            to="/join"
+            className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-300 font-medium transition-colors"
+          >
+            <span>🔑</span>
+            <span>Rejoindre avec un code d'accès</span>
           </Link>
         </div>
       </div>
 
       <button
         onClick={() => navigate('/')}
-        className="mt-4 w-full text-center text-xs text-slate-600 hover:text-slate-400 transition-colors"
+        className="mt-4 w-full text-center text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
       >
         ← Retour à l'accueil
       </button>

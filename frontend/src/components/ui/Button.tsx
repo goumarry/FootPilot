@@ -13,11 +13,11 @@ const variantClasses = {
   primary:
     'bg-violet-600 hover:bg-violet-500 text-white shadow-glow-sm border border-violet-500/30',
   secondary:
-    'bg-slate-700/60 hover:bg-slate-700 text-slate-200 border border-slate-600/50',
+    'bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600/50',
   ghost:
-    'bg-transparent hover:bg-slate-800/60 text-slate-300 border border-slate-700/50',
+    'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/50',
   danger:
-    'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30',
+    'bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30',
 };
 
 const sizeClasses = {

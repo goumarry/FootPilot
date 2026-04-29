@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light dark;
   }
   * {
     -webkit-tap-highlight-color: transparent;
@@ -17,13 +17,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+  html.dark body {
     background-color: #0f172a;
     color: #f1f5f9;
   }
   input, button, select, textarea {
     font-family: inherit;
   }
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
@@ -42,10 +45,10 @@
 
 @layer components {
   .glass {
-    @apply bg-slate-800/50 border border-slate-700/40 backdrop-blur-sm;
+    @apply bg-white/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 backdrop-blur-sm;
   }
   .glass-strong {
-    @apply bg-slate-800/70 border border-slate-700/50 backdrop-blur-md;
+    @apply bg-white/90 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50 backdrop-blur-md;
   }
 }
 
@@ -63,4 +66,69 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+}
+
+/* ── Light-mode overrides scoped to authenticated app pages ─── */
+/* Only affects elements that still use raw (non-dark:) slate classes */
+
+html:not(.dark) .app-content .text-slate-50  { color: #0f172a; }
+html:not(.dark) .app-content .text-slate-100 { color: #1e293b; }
+html:not(.dark) .app-content .text-slate-200 { color: #334155; }
+html:not(.dark) .app-content .text-slate-300 { color: #475569; }
+
+html:not(.dark) .app-content .bg-slate-950    { background-color: #f8fafc; }
+html:not(.dark) .app-content .bg-slate-900    { background-color: #f1f5f9; }
+html:not(.dark) .app-content .bg-slate-800\/50 { background-color: rgba(255,255,255,0.9); }
+html:not(.dark) .app-content .bg-slate-800\/60 { background-color: rgba(255,255,255,1); }
+html:not(.dark) .app-content .bg-slate-700\/50 { background-color: rgba(241,245,249,0.8); }
+html:not(.dark) .app-content .bg-slate-700\/60 { background-color: rgba(241,245,249,0.9); }
+
+html:not(.dark) .app-content .border-slate-700\/40 { border-color: rgba(148,163,184,0.3); }
+html:not(.dark) .app-content .border-slate-700\/50 { border-color: rgba(148,163,184,0.35); }
+html:not(.dark) .app-content .border-slate-600\/40 { border-color: rgba(148,163,184,0.25); }
+html:not(.dark) .app-content .border-slate-600\/50 { border-color: rgba(148,163,184,0.3); }
+
+/* Google Places autocomplete dropdown */
+.pac-container {
+  background-color: #fff;
+  border: 1px solid rgba(148,163,184,0.3);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  margin-top: 4px;
+  overflow: hidden;
+}
+html.dark .pac-container {
+  background-color: #1e293b;
+  border-color: rgba(148,163,184,0.15);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.pac-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: #334155;
+  border-top: 1px solid rgba(148,163,184,0.15);
+}
+html.dark .pac-item {
+  color: #94a3b8;
+  border-top-color: rgba(148,163,184,0.1);
+}
+.pac-item:hover,
+.pac-item-selected {
+  background-color: rgba(124,58,237,0.06);
+}
+html.dark .pac-item:hover,
+html.dark .pac-item-selected {
+  background-color: rgba(124,58,237,0.12);
+}
+.pac-item-query {
+  color: #0f172a;
+  font-weight: 600;
+}
+html.dark .pac-item-query {
+  color: #f1f5f9;
+}
+.pac-icon {
+  display: none;
 }

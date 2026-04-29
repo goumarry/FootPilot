@@ -8,7 +8,6 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
   GESTIONNAIRE
   ENTRAINEUR
   JOUEUR
@@ -51,6 +50,28 @@ enum Circonstance {
   PENALTY
 }
 
+model Image {
+  id        String   @id @default(cuid())
+  data      Bytes
+  mimeType  String   @default("image/webp")
+  size      Int
+  createdAt DateTime @default(now())
+}
+
+model JoinCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  role      Role
+  clubId    String
+  createdBy String
+  expiresAt DateTime
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  club    Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  creator User @relation("JoinCodeCreator", fields: [createdBy], references: [id])
+}
+
 model User {
   id         String    @id @default(cuid())
   email      String    @unique
@@ -68,6 +89,7 @@ model User {
 
   club               Club?        @relation(fields: [clubId], references: [id])
   invitationsCreated Invitation[] @relation("InvitationCreator")
+  joinCodesCreated   JoinCode[]   @relation("JoinCodeCreator")
   actualites         Actualite[]  @relation("ActualiteAuteur")
   joueurProfile      Joueur?
   entraineurProfile  Entraineur?
@@ -89,6 +111,7 @@ model Club {
   entraineurs Entraineur[]
   invitations Invitation[]
   actualites  Actualite[]
+  joinCodes   JoinCode[]
 }
 
 model Categorie {
@@ -119,12 +142,14 @@ model Equipe {
   actualites  Actualite[]
 }
 
+// firstName/lastName sont null quand userId est défini (le nom vient de User).
+// Ils sont requis (non-null) uniquement pour les joueurs ajoutés manuellement sans compte.
 model Joueur {
   id            String    @id @default(cuid())
   userId        String?   @unique
   clubId        String
-  firstName     String
-  lastName      String
+  firstName     String?
+  lastName      String?
   birthDate     DateTime
   poste         Poste?
   numeroMaillot Int?
@@ -140,12 +165,11 @@ model Joueur {
   butsPasses   But[]                  @relation("ButsPasses")
 }
 
+// firstName/lastName sont supprimés car Entraineur a toujours un userId — utiliser user.firstName/lastName.
 model Entraineur {
   id        String  @id @default(cuid())
   userId    String  @unique
   clubId    String
-  firstName String
-  lastName  String
   phone     String?
   photoUrl  String?
 

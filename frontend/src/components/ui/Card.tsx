@@ -11,8 +11,8 @@ export default function Card({ className, children, variant = 'default', ...prop
       className={clsx(
         'rounded-2xl border',
         variant === 'default'
-          ? 'bg-slate-800/50 border-slate-700/40'
-          : 'bg-slate-700/50 border-slate-600/40',
+          ? 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/40'
+          : 'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600/40',
         className
       )}
       {...props}

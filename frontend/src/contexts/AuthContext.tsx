@@ -8,6 +8,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -31,6 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      localStorage.setItem('fp_user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   useEffect(() => {
     const storedToken = localStorage.getItem('fp_token');
     if (!storedToken) {
@@ -44,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

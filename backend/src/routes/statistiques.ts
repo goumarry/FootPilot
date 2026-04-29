@@ -10,6 +10,7 @@ router.get('/joueurs/:id', async (req, res) => {
   const joueur = await prisma.joueur.findUnique({
     where: { id: req.params.id },
     include: {
+      user: { select: { firstName: true, lastName: true } },
       butsMarques: {
         include: { match: { include: { evenement: { select: { dateHeure: true } } } } },
       },
@@ -31,8 +32,8 @@ router.get('/joueurs/:id', async (req, res) => {
   return res.json({
     joueur: {
       id: joueur.id,
-      firstName: joueur.firstName,
-      lastName: joueur.lastName,
+      firstName: joueur.user?.firstName ?? joueur.firstName ?? '',
+      lastName: joueur.user?.lastName ?? joueur.lastName ?? '',
       poste: joueur.poste,
     },
     buts,

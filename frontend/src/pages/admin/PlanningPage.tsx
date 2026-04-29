@@ -10,6 +10,7 @@ import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
+import PlacesInput from '@/components/ui/PlacesInput';
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('fr-FR', {
@@ -26,13 +27,14 @@ export default function PlanningPage() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
 
-  // Formulaire événement
   const [form, setForm] = useState({
     type: 'ENTRAINEMENT' as 'MATCH' | 'ENTRAINEMENT',
     equipeId: '',
     equipeExtId: '',
     dateHeure: '',
     lieu: '',
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
     description: '',
   });
 
@@ -62,6 +64,8 @@ export default function PlanningPage() {
         equipeId: form.equipeId,
         dateHeure: form.dateHeure,
         lieu: form.lieu || undefined,
+        latitude: form.latitude,
+        longitude: form.longitude,
         description: form.description || undefined,
       };
       if (form.type === 'MATCH') {
@@ -73,7 +77,7 @@ export default function PlanningPage() {
         (a, b) => new Date(a.dateHeure).getTime() - new Date(b.dateHeure).getTime()
       ));
       setShowModal(false);
-      setForm((f) => ({ ...f, dateHeure: '', lieu: '', description: '' }));
+      setForm((f) => ({ ...f, dateHeure: '', lieu: '', latitude: undefined, longitude: undefined, description: '' }));
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -112,7 +116,6 @@ export default function PlanningPage() {
           </Button>
         </div>
 
-        {/* Filtre équipe */}
         {equipes.length > 1 && (
           <div className="flex gap-2 flex-wrap mb-6">
             <button
@@ -211,12 +214,14 @@ export default function PlanningPage() {
           value={form.dateHeure}
           onChange={(e) => setForm((f) => ({ ...f, dateHeure: e.target.value }))}
         />
-        <Input
+        <PlacesInput
           label="Lieu (optionnel)"
-          placeholder="Stade municipal, Terrain annexe…"
+          placeholder="Stade municipal, terrain annexe…"
           value={form.lieu}
-          onChange={(e) => setForm((f) => ({ ...f, lieu: e.target.value }))}
-          icon={<MapPin size={14} />}
+          onChange={(val) => setForm((f) => ({ ...f, lieu: val, latitude: undefined, longitude: undefined }))}
+          onPlaceSelect={({ address, lat, lng }) =>
+            setForm((f) => ({ ...f, lieu: address, latitude: lat, longitude: lng }))
+          }
         />
         <Input
           label="Description (optionnel)"
@@ -224,7 +229,7 @@ export default function PlanningPage() {
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
         />
-        {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+        {error && <p className="text-xs text-red-500 dark:text-red-400 mb-3">{error}</p>}
         <div className="flex gap-3 mt-2">
           <Button variant="secondary" full onClick={() => setShowModal(false)}>Annuler</Button>
           <Button full onClick={handleCreate} loading={saving}>Créer</Button>

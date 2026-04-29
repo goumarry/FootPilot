@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import RequireAuth from '@/components/layout/RequireAuth';
 
 // Public
@@ -8,11 +9,15 @@ import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import CreateClubPage from '@/pages/CreateClubPage';
 
-// Admin / Gestionnaire
+// Gestionnaire
 import AdminDashboardPage from '@/pages/admin/DashboardPage';
 import MembresPage from '@/pages/admin/MembresPage';
 import CategoriesPage from '@/pages/admin/CategoriesPage';
 import EquipesPage from '@/pages/admin/EquipesPage';
+import EquipeDetailPage from '@/pages/admin/EquipeDetailPage';
+import ClubPage from '@/pages/admin/ClubPage';
+import JoinPage from '@/pages/JoinPage';
+import ProfilePage from '@/pages/ProfilePage';
 import JoueursPage from '@/pages/admin/JoueursPage';
 import PlanningAdminPage from '@/pages/admin/PlanningPage';
 import ActualitesAdminPage from '@/pages/admin/ActualitesPage';
@@ -25,27 +30,30 @@ import StatsPage from '@/pages/dashboard/StatsPage';
 import EquipesPageDash from '@/pages/dashboard/EquipesPage';
 import JoueursPageDash from '@/pages/dashboard/JoueursPage';
 
-const ADMIN_ROLES = ['ADMIN', 'GESTIONNAIRE'] as const;
-const ALL_ROLES = ['ADMIN', 'GESTIONNAIRE', 'ENTRAINEUR', 'JOUEUR'] as const;
-const COACH_ROLES = ['ADMIN', 'GESTIONNAIRE', 'ENTRAINEUR'] as const;
+const GESTIONNAIRE_ROLES = ['GESTIONNAIRE'] as const;
+const COACH_ROLES = ['GESTIONNAIRE', 'ENTRAINEUR'] as const;
+const ALL_ROLES = ['GESTIONNAIRE', 'ENTRAINEUR', 'JOUEUR'] as const;
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         <Routes>
           {/* ── Public ── */}
           <Route path="/" element={<SplashPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/register/:token" element={<RegisterPage />} />
+          <Route path="/register" element={<Navigate to="/join" replace />} />
           <Route path="/create-club" element={<CreateClubPage />} />
+          <Route path="/join" element={<JoinPage />} />
+          <Route path="/join/:code" element={<JoinPage />} />
 
-          {/* ── Admin / Gestionnaire ── */}
+          {/* ── Gestionnaire + Entraîneur ── */}
           <Route
             path="/admin"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <AdminDashboardPage />
               </RequireAuth>
             }
@@ -53,7 +61,7 @@ export default function App() {
           <Route
             path="/admin/membres"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <MembresPage />
               </RequireAuth>
             }
@@ -61,7 +69,7 @@ export default function App() {
           <Route
             path="/admin/categories"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <CategoriesPage />
               </RequireAuth>
             }
@@ -69,15 +77,23 @@ export default function App() {
           <Route
             path="/admin/equipes"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <EquipesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/equipes/:id"
+            element={
+              <RequireAuth roles={[...COACH_ROLES]}>
+                <EquipeDetailPage />
               </RequireAuth>
             }
           />
           <Route
             path="/admin/joueurs"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <JoueursPage />
               </RequireAuth>
             }
@@ -85,7 +101,7 @@ export default function App() {
           <Route
             path="/admin/planning"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <PlanningAdminPage />
               </RequireAuth>
             }
@@ -93,8 +109,16 @@ export default function App() {
           <Route
             path="/admin/actualites"
             element={
-              <RequireAuth roles={[...ADMIN_ROLES]}>
+              <RequireAuth roles={[...COACH_ROLES]}>
                 <ActualitesAdminPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/club"
+            element={
+              <RequireAuth roles={[...GESTIONNAIRE_ROLES]}>
+                <ClubPage />
               </RequireAuth>
             }
           />
@@ -149,9 +173,20 @@ export default function App() {
             }
           />
 
+          {/* ── Profil (tous rôles) ── */}
+          <Route
+            path="/profile"
+            element={
+              <RequireAuth roles={[...ALL_ROLES]}>
+                <ProfilePage />
+              </RequireAuth>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

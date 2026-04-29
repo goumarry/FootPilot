@@ -6,21 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding FootPilot database...');
 
-  // ── Super Admin ───────────────────────────────────────────────────────────
-  const adminExists = await prisma.user.findUnique({ where: { email: 'admin@footpilot.fr' } });
-  if (!adminExists) {
-    await prisma.user.create({
-      data: {
-        email: 'admin@footpilot.fr',
-        password: await bcrypt.hash('Admin123!', 12),
-        firstName: 'Super',
-        lastName: 'Admin',
-        role: Role.ADMIN,
-      },
-    });
-    console.log('✅ Admin créé — admin@footpilot.fr / Admin123!');
-  }
-
   // ── Club test ─────────────────────────────────────────────────────────────
   const clubExists = await prisma.club.findFirst({ where: { nom: 'AS FootPilot FC' } });
   if (clubExists) {
@@ -74,7 +59,7 @@ async function main() {
     },
   });
 
-  // Entraîneur
+  // Entraîneur — le nom vient du User, pas du profil Entraineur
   const entraineurUser = await prisma.user.create({
     data: {
       email: 'entraineur@footpilot.fr',
@@ -90,8 +75,6 @@ async function main() {
     data: {
       userId: entraineurUser.id,
       clubId: club.id,
-      firstName: 'Karim',
-      lastName: 'Benzara',
       phone: '0600000001',
     },
   });
@@ -101,7 +84,7 @@ async function main() {
     data: { entraineurId: entraineur.id, equipeId: equipeA.id },
   });
 
-  // Joueurs
+  // Joueurs — le nom vient du User pour les joueurs avec compte
   const joueursData = [
     { firstName: 'Lucas', lastName: 'Martin', poste: Poste.ATT, numero: 9 },
     { firstName: 'Thomas', lastName: 'Petit', poste: Poste.MIL, numero: 8 },
@@ -123,12 +106,11 @@ async function main() {
         },
       });
 
+      // Pas de firstName/lastName sur Joueur — vient du User via userId
       return prisma.joueur.create({
         data: {
           userId: userJoueur.id,
           clubId: club.id,
-          firstName: j.firstName,
-          lastName: j.lastName,
           birthDate: new Date(`200${i}-06-15`),
           poste: j.poste,
           numeroMaillot: j.numero,
@@ -191,7 +173,7 @@ async function main() {
       clubId: club.id,
       titre: 'Bienvenue sur FootPilot !',
       contenu:
-        'Bienvenue à tous les membres de l\'AS FootPilot FC. Cette plateforme centralisera toute la vie de notre club : planning, résultats, statistiques et actualités. Bonne saison à tous !',
+        "Bienvenue à tous les membres de l'AS FootPilot FC. Cette plateforme centralisera toute la vie de notre club : planning, résultats, statistiques et actualités. Bonne saison à tous !",
     },
   });
 
@@ -201,13 +183,12 @@ async function main() {
 Club test : AS FootPilot FC (Lyon)
 
 Comptes de test :
-  admin@footpilot.fr       / Admin123!          (ADMIN)
-  gestionnaire@footpilot.fr/ Gestionnaire123!   (GESTIONNAIRE)
-  entraineur@footpilot.fr  / Entraineur123!     (ENTRAINEUR)
-  joueur1@footpilot.fr     / Joueur123!         (JOUEUR)
-  joueur2@footpilot.fr     / Joueur123!         (JOUEUR)
-  joueur3@footpilot.fr     / Joueur123!         (JOUEUR)
-  joueur4@footpilot.fr     / Joueur123!         (JOUEUR)
+  gestionnaire@footpilot.fr / Gestionnaire123!   (GESTIONNAIRE)
+  entraineur@footpilot.fr   / Entraineur123!     (ENTRAINEUR)
+  joueur1@footpilot.fr      / Joueur123!         (JOUEUR)
+  joueur2@footpilot.fr      / Joueur123!         (JOUEUR)
+  joueur3@footpilot.fr      / Joueur123!         (JOUEUR)
+  joueur4@footpilot.fr      / Joueur123!         (JOUEUR)
 `);
 }
 

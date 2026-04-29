@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { verifyToken, requireRole } from '../middleware/auth';
+import { upload, processImage } from '../lib/upload';
 
 const router = Router();
 router.use(verifyToken);
@@ -29,8 +30,8 @@ router.get('/:id', async (req, res) => {
 });
 
 // PUT /api/clubs/:id — GESTIONNAIRE du club uniquement
-router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
-  if (req.user!.role === Role.GESTIONNAIRE && req.user!.clubId !== req.params.id) {
+router.put('/:id', requireRole(Role.GESTIONNAIRE), async (req, res) => {
+  if (req.user!.clubId !== req.params.id) {
     return res.status(403).json({ message: 'Accès interdit à ce club.' });
   }
 
@@ -49,9 +50,30 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) 
   return res.json(club);
 });
 
+// POST /api/clubs/:id/logo — GESTIONNAIRE uniquement
+router.post('/:id/logo', requireRole(Role.GESTIONNAIRE), upload.single('logo'), async (req, res) => {
+  if (req.user!.clubId !== req.params.id) {
+    return res.status(403).json({ message: 'Accès interdit à ce club.' });
+  }
+  if (!req.file) return res.status(400).json({ message: 'Fichier requis.' });
+
+  try {
+    const { data, mimeType, size } = await processImage(req.file.buffer, 400, 400);
+    const image = await prisma.image.create({ data: { data, mimeType, size } });
+    const logoUrl = `/api/images/${image.id}`;
+    const club = await prisma.club.update({
+      where: { id: req.params.id },
+      data: { logoUrl },
+    });
+    return res.json({ logoUrl: club.logoUrl });
+  } catch {
+    return res.status(422).json({ message: "Impossible de traiter l'image." });
+  }
+});
+
 // GET /api/clubs/:id/membres
-router.get('/:id/membres', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
-  if (req.user!.role !== Role.ADMIN && req.user!.clubId !== req.params.id) {
+router.get('/:id/membres', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
+  if (req.user!.clubId !== req.params.id) {
     return res.status(403).json({ message: 'Accès interdit à ce club.' });
   }
 

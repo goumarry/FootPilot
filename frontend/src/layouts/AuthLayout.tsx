@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Ambient orbs */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-48 -right-48 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl" />

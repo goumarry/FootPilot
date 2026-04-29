@@ -13,17 +13,18 @@ const entraineurUpdateSchema = z.object({
 });
 
 // GET /api/entraineurs
-router.get('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.get('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const clubId = req.user!.clubId;
 
   const entraineurs = await prisma.entraineur.findMany({
     where: clubId ? { clubId } : {},
     include: {
+      user: { select: { firstName: true, lastName: true, email: true } },
       equipes: {
         include: { equipe: { select: { id: true, nomEquipe: true } } },
       },
     },
-    orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    orderBy: { user: { lastName: 'asc' } },
   });
   return res.json(entraineurs);
 });
@@ -33,6 +34,7 @@ router.get('/:id', async (req, res) => {
   const entraineur = await prisma.entraineur.findUnique({
     where: { id: req.params.id },
     include: {
+      user: { select: { firstName: true, lastName: true, email: true } },
       equipes: {
         include: { equipe: { select: { id: true, nomEquipe: true, categorie: true } } },
       },
@@ -54,12 +56,12 @@ router.put('/:id', async (req, res) => {
 
   const isOwner = entraineur.userId === req.user!.userId;
   const isManager = req.user!.role === Role.GESTIONNAIRE && entraineur.clubId === req.user!.clubId;
-  const isAdmin = req.user!.role === Role.ADMIN;
-  if (!isOwner && !isManager && !isAdmin) return res.status(403).json({ message: 'Accès interdit.' });
+  if (!isOwner && !isManager) return res.status(403).json({ message: 'Accès interdit.' });
 
   const updated = await prisma.entraineur.update({
     where: { id: req.params.id },
     data: { ...parsed.data, photoUrl: parsed.data.photoUrl || undefined },
+    include: { user: { select: { firstName: true, lastName: true, email: true } } },
   });
   return res.json(updated);
 });

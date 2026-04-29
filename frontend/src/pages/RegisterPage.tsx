@@ -33,11 +33,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setInvitError("Aucun token d'invitation fourni. Demandez un lien à votre administrateur.");
-      setLoadingInvit(false);
-      return;
-    }
+    if (!token) return;
     getInvitation(token)
       .then((data) => {
         setInvitData(data);
@@ -78,7 +74,7 @@ export default function RegisterPage() {
       });
       setAuth(jwt, user);
       navigate(
-        user.role === 'ADMIN' || user.role === 'GESTIONNAIRE' ? '/admin' : '/dashboard',
+        user.role === 'JOUEUR' ? '/dashboard' : '/admin',
         { replace: true }
       );
     } catch (err: unknown) {
@@ -96,7 +92,7 @@ export default function RegisterPage() {
       <AuthLayout>
         <div className="flex flex-col items-center justify-center gap-3 py-20">
           <Loader2 className="animate-spin text-violet-400" size={28} />
-          <p className="text-sm text-slate-400">Vérification du lien…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Vérification du lien…</p>
         </div>
       </AuthLayout>
     );
@@ -105,12 +101,12 @@ export default function RegisterPage() {
   if (invitError) {
     return (
       <AuthLayout>
-        <div className="bg-slate-800/50 border border-slate-700/40 rounded-3xl p-8 text-center backdrop-blur-sm">
-          <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center mx-auto mb-4">
-            <Link2 size={22} className="text-red-400" />
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-3xl p-8 text-center backdrop-blur-sm shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25 flex items-center justify-center mx-auto mb-4">
+            <Link2 size={22} className="text-red-500 dark:text-red-400" />
           </div>
-          <h2 className="text-lg font-bold text-slate-100 mb-2">Lien invalide</h2>
-          <p className="text-sm text-slate-400 mb-6">{invitError}</p>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Lien invalide</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{invitError}</p>
           <Button onClick={() => navigate('/login')} variant="secondary" full>
             Aller à la connexion
           </Button>
@@ -125,25 +121,25 @@ export default function RegisterPage() {
         <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
           <Activity size={18} className="text-violet-400" />
         </div>
-        <span className="text-base font-bold text-slate-200">FootPilot</span>
+        <span className="text-base font-bold text-slate-700 dark:text-slate-200">FootPilot</span>
       </div>
 
-      <div className="bg-slate-800/50 border border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm shadow-sm">
         <div className="mb-6">
-          <div className="inline-flex items-center gap-1.5 bg-violet-500/10 border border-violet-500/20 rounded-full px-3 py-1 mb-4">
-            <Link2 size={12} className="text-violet-400" />
-            <span className="text-xs font-semibold text-violet-400">Invitation reçue</span>
+          <div className="inline-flex items-center gap-1.5 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 rounded-full px-3 py-1 mb-4">
+            <Link2 size={12} className="text-violet-500 dark:text-violet-400" />
+            <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Invitation reçue</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-50 mb-1.5 tracking-tight">Créer mon compte</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">Créer mon compte</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {invitData?.clubNom && (
               <>
-                Club : <span className="text-slate-200 font-semibold">{invitData.clubNom}</span>
+                Club : <span className="text-slate-700 dark:text-slate-200 font-semibold">{invitData.clubNom}</span>
                 {' — '}
               </>
             )}
             Rôle :{' '}
-            <span className="text-violet-300 font-semibold">
+            <span className="text-violet-600 dark:text-violet-300 font-semibold">
               {ROLE_LABELS[(invitData?.role as Role) ?? 'JOUEUR']}
             </span>
           </p>
@@ -210,7 +206,7 @@ export default function RegisterPage() {
           />
 
           {formError && (
-            <div className="flex items-center gap-2.5 mb-4 px-4 py-3 bg-red-500/10 border border-red-500/25 rounded-xl text-sm text-red-400">
+            <div className="flex items-center gap-2.5 mb-4 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25 rounded-xl text-sm text-red-600 dark:text-red-400">
               <AlertCircle size={15} className="flex-shrink-0" />
               <span>{formError}</span>
             </div>
@@ -221,11 +217,11 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-slate-700/40 text-center text-sm text-slate-500">
+        <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/40 text-center text-sm text-slate-500">
           Déjà un compte ?{' '}
           <button
             onClick={() => navigate('/login')}
-            className="text-violet-400 hover:text-violet-300 font-semibold transition-colors"
+            className="text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 font-semibold transition-colors"
           >
             Se connecter
           </button>

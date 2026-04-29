@@ -62,7 +62,7 @@ export default function CreateClubPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Ambient */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl" />
@@ -75,13 +75,13 @@ export default function CreateClubPage() {
           <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
             <Activity size={18} className="text-violet-400" />
           </div>
-          <span className="text-base font-bold text-slate-200">FootPilot</span>
+          <span className="text-base font-bold text-slate-700 dark:text-slate-200">FootPilot</span>
         </div>
 
-        <div className="bg-slate-800/50 border border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm shadow-sm">
           <div className="mb-7">
-            <h1 className="text-2xl font-extrabold text-slate-50 mb-1.5 tracking-tight">Créer mon club</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">Créer mon club</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Votre compte sera le compte administrateur du club. Vous pourrez ensuite inviter des entraîneurs et des joueurs.
             </p>
           </div>
@@ -91,7 +91,7 @@ export default function CreateClubPage() {
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-4">
                 <Shield size={14} className="text-violet-400" />
-                <span className="text-xs font-bold text-violet-400 uppercase tracking-wider">Informations du club</span>
+                <span className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider">Informations du club</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4">
                 <Input
@@ -116,10 +116,10 @@ export default function CreateClubPage() {
             </div>
 
             {/* Section compte */}
-            <div className="border-t border-slate-700/40 pt-5 mb-5">
+            <div className="border-t border-slate-100 dark:border-slate-700/40 pt-5 mb-5">
               <div className="flex items-center gap-2 mb-4">
                 <User size={14} className="text-violet-400" />
-                <span className="text-xs font-bold text-violet-400 uppercase tracking-wider">Votre compte gestionnaire</span>
+                <span className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider">Votre compte gestionnaire</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4">
                 <Input
@@ -175,7 +175,7 @@ export default function CreateClubPage() {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2.5 mb-4 px-4 py-3 bg-red-500/10 border border-red-500/25 rounded-xl text-sm text-red-400">
+              <div className="flex items-center gap-2.5 mb-4 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25 rounded-xl text-sm text-red-600 dark:text-red-400">
                 <AlertCircle size={15} className="flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -190,7 +190,7 @@ export default function CreateClubPage() {
 
         <button
           onClick={() => navigate('/')}
-          className="mt-4 w-full text-center text-xs text-slate-600 hover:text-slate-400 transition-colors"
+          className="mt-4 w-full text-center text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
         >
           ← Retour à l'accueil
         </button>

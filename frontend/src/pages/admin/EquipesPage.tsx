@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { getEquipes, createEquipe, updateEquipe, deleteEquipe } from '@/api/equipes';
 import { getCategories } from '@/api/categories';
@@ -11,6 +12,7 @@ import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
 
 export default function EquipesPage() {
+  const navigate = useNavigate();
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +141,8 @@ export default function EquipesPage() {
                   {eqs.map((eq) => (
                     <div
                       key={eq.id}
-                      className="flex items-center gap-4 bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5"
+                      onClick={() => navigate(`/admin/equipes/${eq.id}`)}
+                      className="flex items-center gap-4 bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5 cursor-pointer hover:border-slate-600/60 hover:bg-slate-800/80 transition-colors"
                     >
                       <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
                         <Shield size={16} className="text-blue-400" />
@@ -152,13 +155,13 @@ export default function EquipesPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => openEdit(eq)}
+                        onClick={(e) => { e.stopPropagation(); openEdit(eq); }}
                         className="text-slate-500 hover:text-slate-300 transition-colors p-1"
                       >
                         <Pencil size={15} />
                       </button>
                       <button
-                        onClick={() => handleDelete(eq)}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(eq); }}
                         className="text-slate-500 hover:text-red-400 transition-colors p-1"
                       >
                         <Trash2 size={15} />

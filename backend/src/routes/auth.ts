@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { verifyToken } from '../middleware/auth';
+import { upload, processImage } from '../lib/upload';
 
 const router = Router();
 
@@ -178,27 +179,23 @@ router.post('/register', async (req, res) => {
     prisma.invitation.update({ where: { token }, data: { usedAt: new Date() } }),
   ]);
 
-  // Si joueur, créer le profil joueur
+  // Le profil joueur est lié au User via userId — firstName/lastName viennent de User
   if (invitation.role === 'JOUEUR' && invitation.clubId) {
     await prisma.joueur.create({
       data: {
         userId: user.id,
         clubId: invitation.clubId,
-        firstName: user.firstName,
-        lastName: user.lastName,
         birthDate: user.birthDate ?? new Date(),
       },
     });
   }
 
-  // Si entraineur, créer le profil entraineur
+  // Le profil entraineur est lié au User via userId — firstName/lastName viennent de User
   if (invitation.role === 'ENTRAINEUR' && invitation.clubId) {
     await prisma.entraineur.create({
       data: {
         userId: user.id,
         clubId: invitation.clubId,
-        firstName: user.firstName,
-        lastName: user.lastName,
       },
     });
   }
@@ -215,6 +212,23 @@ router.post('/register', async (req, res) => {
       clubId: user.clubId,
     },
   });
+});
+
+// POST /api/auth/me/profile-pic — upload photo de profil (authentifié)
+router.post('/me/profile-pic', verifyToken, upload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'Fichier requis.' });
+  try {
+    const { data, mimeType, size } = await processImage(req.file.buffer, 400, 400);
+    const image = await prisma.image.create({ data: { data, mimeType, size } });
+    const profilePic = `/api/images/${image.id}`;
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { profilePic },
+    });
+    return res.json({ profilePic });
+  } catch {
+    return res.status(422).json({ message: "Impossible de traiter l'image." });
+  }
 });
 
 // GET /api/auth/me

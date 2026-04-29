@@ -24,13 +24,10 @@ const assignEntraineurSchema = z.object({
 // GET /api/equipes
 router.get('/', async (req, res) => {
   const clubId = req.user!.clubId;
-  if (!clubId && req.user!.role !== Role.ADMIN) {
-    return res.status(400).json({ message: 'Vous devez appartenir à un club.' });
-  }
+  if (!clubId) return res.status(400).json({ message: 'Vous devez appartenir à un club.' });
 
-  const where = req.user!.role === Role.ADMIN
-    ? {}
-    : req.user!.role === Role.ENTRAINEUR
+  const where =
+    req.user!.role === Role.ENTRAINEUR
       ? {
           clubId,
           entraineurs: { some: { entraineur: { userId: req.user!.userId } } },
@@ -57,7 +54,15 @@ router.get('/:id', async (req, res) => {
       joueurs: {
         include: {
           joueur: {
-            select: { id: true, firstName: true, lastName: true, poste: true, numeroMaillot: true, photoUrl: true },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              poste: true,
+              numeroMaillot: true,
+              photoUrl: true,
+              user: { select: { firstName: true, lastName: true } },
+            },
           },
         },
         where: { dateFin: null },
@@ -65,18 +70,46 @@ router.get('/:id', async (req, res) => {
       entraineurs: {
         include: {
           entraineur: {
-            select: { id: true, firstName: true, lastName: true, photoUrl: true },
+            select: {
+              id: true,
+              photoUrl: true,
+              user: { select: { firstName: true, lastName: true } },
+            },
           },
         },
       },
     },
   });
   if (!equipe) return res.status(404).json({ message: 'Équipe introuvable.' });
-  return res.json(equipe);
+
+  // Normalise les noms joueurs et entraineurs
+  const result = {
+    ...equipe,
+    joueurs: equipe.joueurs.map((je) => ({
+      ...je,
+      joueur: {
+        ...je.joueur,
+        firstName: je.joueur.user?.firstName ?? je.joueur.firstName ?? '',
+        lastName: je.joueur.user?.lastName ?? je.joueur.lastName ?? '',
+        user: undefined,
+      },
+    })),
+    entraineurs: equipe.entraineurs.map((ee) => ({
+      ...ee,
+      entraineur: {
+        ...ee.entraineur,
+        firstName: ee.entraineur.user.firstName,
+        lastName: ee.entraineur.user.lastName,
+        user: undefined,
+      },
+    })),
+  };
+
+  return res.json(result);
 });
 
 // POST /api/equipes
-router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = equipeSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -103,7 +136,7 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), as
 });
 
 // PUT /api/equipes/:id
-router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = equipeSchema.partial().safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -111,7 +144,7 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), 
 
   const equipe = await prisma.equipe.findUnique({ where: { id: req.params.id } });
   if (!equipe) return res.status(404).json({ message: 'Équipe introuvable.' });
-  if (equipe.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (equipe.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
@@ -124,10 +157,10 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), 
 });
 
 // DELETE /api/equipes/:id
-router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const equipe = await prisma.equipe.findUnique({ where: { id: req.params.id } });
   if (!equipe) return res.status(404).json({ message: 'Équipe introuvable.' });
-  if (equipe.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (equipe.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
@@ -136,7 +169,7 @@ router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, re
 });
 
 // POST /api/equipes/:id/joueurs — assigner un joueur
-router.post('/:id/joueurs', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.post('/:id/joueurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = assignJoueurSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.' });
@@ -161,16 +194,16 @@ router.post('/:id/joueurs', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTR
 });
 
 // DELETE /api/equipes/:id/joueurs/:joueurId — retirer un joueur
-router.delete('/:id/joueurs/:joueurId', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.delete('/:id/joueurs/:joueurId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   await prisma.joueurEquipe.update({
     where: { joueurId_equipeId: { joueurId: req.params.joueurId, equipeId: req.params.id } },
     data: { dateFin: new Date() },
   });
-  return res.json({ message: 'Joueur retiré de l\'équipe.' });
+  return res.json({ message: "Joueur retiré de l'équipe." });
 });
 
 // POST /api/equipes/:id/entraineurs — assigner un entraineur
-router.post('/:id/entraineurs', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.post('/:id/entraineurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = assignEntraineurSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: 'Données invalides.' });
 
@@ -186,13 +219,13 @@ router.post('/:id/entraineurs', requireRole(Role.GESTIONNAIRE, Role.ADMIN), asyn
 });
 
 // DELETE /api/equipes/:id/entraineurs/:entraineurId
-router.delete('/:id/entraineurs/:entraineurId', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.delete('/:id/entraineurs/:entraineurId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   await prisma.entraineurEquipe.delete({
     where: {
       entraineurId_equipeId: { entraineurId: req.params.entraineurId, equipeId: req.params.id },
     },
   });
-  return res.json({ message: 'Entraîneur retiré de l\'équipe.' });
+  return res.json({ message: "Entraîneur retiré de l'équipe." });
 });
 
 export default router;

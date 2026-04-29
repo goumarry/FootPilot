@@ -7,6 +7,11 @@ import { verifyToken, requireRole } from '../middleware/auth';
 const router = Router();
 router.use(verifyToken);
 
+type JoueurRaw = { id: string; firstName: string | null; lastName: string | null; user?: { firstName: string; lastName: string } | null };
+function joueurNom(j: JoueurRaw) {
+  return { id: j.id, firstName: j.user?.firstName ?? j.firstName ?? '', lastName: j.user?.lastName ?? j.lastName ?? '' };
+}
+
 const butSchema = z.object({
   buteurId: z.string(),
   passeurId: z.string().optional(),
@@ -26,8 +31,13 @@ const scoreSchema = z.object({
   statut: z.enum(['AVENIR', 'TERMINE', 'ANNULE']).optional(),
 });
 
+const butInclude = {
+  buteur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
+  passeur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
+} as const;
+
 // POST /api/matchs/:id/buts
-router.post('/:id/buts', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.post('/:id/buts', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = butSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -37,20 +47,19 @@ router.post('/:id/buts', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAIN
   if (!match) return res.status(404).json({ message: 'Match introuvable.' });
 
   const but = await prisma.but.create({
-    data: {
-      matchId: req.params.id,
-      ...parsed.data,
-    },
-    include: {
-      buteur: { select: { id: true, firstName: true, lastName: true } },
-      passeur: { select: { id: true, firstName: true, lastName: true } },
-    },
+    data: { matchId: req.params.id, ...parsed.data },
+    include: butInclude,
   });
-  return res.status(201).json(but);
+
+  return res.status(201).json({
+    ...but,
+    buteur: joueurNom(but.buteur),
+    passeur: but.passeur ? joueurNom(but.passeur) : null,
+  });
 });
 
 // DELETE /api/matchs/:id/buts/:butId
-router.delete('/:id/buts/:butId', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.delete('/:id/buts/:butId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const but = await prisma.but.findUnique({ where: { id: req.params.butId } });
   if (!but || but.matchId !== req.params.id) return res.status(404).json({ message: 'But introuvable.' });
   await prisma.but.delete({ where: { id: req.params.butId } });
@@ -61,17 +70,18 @@ router.delete('/:id/buts/:butId', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Rol
 router.get('/:id/buts', async (req, res) => {
   const buts = await prisma.but.findMany({
     where: { matchId: req.params.id },
-    include: {
-      buteur: { select: { id: true, firstName: true, lastName: true } },
-      passeur: { select: { id: true, firstName: true, lastName: true } },
-    },
+    include: butInclude,
     orderBy: { minute: 'asc' },
   });
-  return res.json(buts);
+  return res.json(buts.map((b) => ({
+    ...b,
+    buteur: joueurNom(b.buteur),
+    passeur: b.passeur ? joueurNom(b.passeur) : null,
+  })));
 });
 
 // PUT /api/matchs/:id/score
-router.put('/:id/score', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.put('/:id/score', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = scoreSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -92,7 +102,7 @@ router.put('/:id/score', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAIN
 });
 
 // POST /api/matchs/:id/convocations
-router.post('/:id/convocations', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.post('/:id/convocations', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = convocationSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -118,14 +128,31 @@ router.get('/:id/convocations', async (req, res) => {
   const convocations = await prisma.convocationMatch.findMany({
     where: { matchId: req.params.id },
     include: {
-      joueur: { select: { id: true, firstName: true, lastName: true, poste: true, photoUrl: true } },
+      joueur: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          poste: true,
+          photoUrl: true,
+          user: { select: { firstName: true, lastName: true } },
+        },
+      },
     },
   });
-  return res.json(convocations);
+  return res.json(convocations.map((c) => ({
+    ...c,
+    joueur: {
+      ...c.joueur,
+      firstName: c.joueur.user?.firstName ?? c.joueur.firstName ?? '',
+      lastName: c.joueur.user?.lastName ?? c.joueur.lastName ?? '',
+      user: undefined,
+    },
+  })));
 });
 
 // PUT /api/matchs/:matchId/convocations/:joueurId
-router.put('/:matchId/convocations/:joueurId', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.put('/:matchId/convocations/:joueurId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const schema = z.object({
     note: z.number().int().min(1).max(10).optional(),
     commentaire: z.string().optional(),

@@ -30,6 +30,11 @@ services:
       JWT_SECRET: fp_jwt_secret_change_in_production_use_256bit_random
       PORT: 3001
       NODE_ENV: production
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: "587"
+      SMTP_USER: footpilot.notifications@gmail.com
+      SMTP_PASS: "qfbc otbq acyh jqjz"
+      SMTP_FROM: "FootPilot <footpilot.notifications@gmail.com>"
       APP_URL: http://localhost:3000
       CORS_ORIGIN: http://localhost:3000
     depends_on:

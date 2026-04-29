@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/categories
-router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = categorieSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -46,7 +46,7 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) =>
 });
 
 // PUT /api/categories/:id
-router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = categorieSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -54,7 +54,7 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) 
 
   const cat = await prisma.categorie.findUnique({ where: { id: req.params.id } });
   if (!cat) return res.status(404).json({ message: 'Catégorie introuvable.' });
-  if (cat.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (cat.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
@@ -66,13 +66,13 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) 
 });
 
 // DELETE /api/categories/:id
-router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const cat = await prisma.categorie.findUnique({
     where: { id: req.params.id },
     include: { _count: { select: { equipes: true } } },
   });
   if (!cat) return res.status(404).json({ message: 'Catégorie introuvable.' });
-  if (cat.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (cat.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
   if (cat._count.equipes > 0) {

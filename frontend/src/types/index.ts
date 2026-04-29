@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'GESTIONNAIRE' | 'ENTRAINEUR' | 'JOUEUR';
+export type Role = 'GESTIONNAIRE' | 'ENTRAINEUR' | 'JOUEUR';
 export type Poste = 'DEF' | 'MIL' | 'ATT' | 'GB';
 export type StatutMatch = 'AVENIR' | 'TERMINE' | 'ANNULE';
 export type TypeEvenement = 'MATCH' | 'ENTRAINEMENT';
@@ -45,6 +45,34 @@ export interface Equipe {
   _count?: { joueurs: number; entraineurs: number };
 }
 
+export interface EquipeDetail extends Omit<Equipe, '_count'> {
+  joueurs: Array<{
+    joueurId: string;
+    equipeId: string;
+    dateDebut: string;
+    dateFin?: string | null;
+    joueur: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      poste?: Poste | null;
+      numeroMaillot?: number | null;
+      photoUrl?: string | null;
+    };
+  }>;
+  entraineurs: Array<{
+    entraineurId: string;
+    equipeId: string;
+    entraineur: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      photoUrl?: string | null;
+    };
+  }>;
+}
+
+// firstName/lastName sont toujours présents dans les réponses API (normalisés depuis User ou champs directs).
 export interface Joueur {
   id: string;
   userId?: string | null;
@@ -58,14 +86,14 @@ export interface Joueur {
   equipes?: Array<{ equipe: Equipe; dateDebut: string; dateFin?: string | null }>;
 }
 
+// firstName/lastName proviennent de user.firstName/lastName dans les réponses API.
 export interface Entraineur {
   id: string;
   userId: string;
   clubId: string;
-  firstName: string;
-  lastName: string;
   phone?: string | null;
   photoUrl?: string | null;
+  user?: { firstName: string; lastName: string; email: string };
   equipes?: Array<{ equipe: Equipe }>;
 }
 
@@ -145,6 +173,18 @@ export interface Actualite {
   equipe?: Pick<Equipe, 'id' | 'nomEquipe'> | null;
 }
 
+export interface JoinCode {
+  id: string;
+  code: string;
+  role: 'ENTRAINEUR' | 'JOUEUR';
+  clubId: string;
+  createdBy: string;
+  expiresAt: string;
+  usedCount: number;
+  createdAt: string;
+  creator?: { firstName: string; lastName: string };
+}
+
 export interface Invitation {
   id: string;
   token: string;
@@ -159,7 +199,6 @@ export interface Invitation {
 }
 
 export const ROLE_LABELS: Record<Role, string> = {
-  ADMIN: 'Administrateur',
   GESTIONNAIRE: 'Gestionnaire',
   ENTRAINEUR: 'Entraîneur',
   JOUEUR: 'Joueur',

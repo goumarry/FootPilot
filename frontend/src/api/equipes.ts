@@ -1,13 +1,13 @@
 import client from './client';
-import type { Equipe } from '@/types';
+import type { Equipe, EquipeDetail } from '@/types';
 
 export async function getEquipes(): Promise<Equipe[]> {
   const { data } = await client.get<Equipe[]>('/equipes');
   return data;
 }
 
-export async function getEquipe(id: string): Promise<Equipe> {
-  const { data } = await client.get<Equipe>(`/equipes/${id}`);
+export async function getEquipe(id: string): Promise<EquipeDetail> {
+  const { data } = await client.get<EquipeDetail>(`/equipes/${id}`);
   return data;
 }
 

@@ -1,89 +1,79 @@
 # FootPilot
 
-Gestion de club de football — mobile first, React + Node.js.
+Application de gestion de club de football — mobile first.
 
-## Stack technique
-
-| Couche | Technologie |
-|---|---|
-| Frontend | React 18 + Vite + TypeScript + Tailwind CSS v3 |
-| Backend | Node.js + Express + TypeScript |
-| ORM | Prisma |
-| Base de données | PostgreSQL 16 |
-| Auth | JWT (jsonwebtoken) + bcryptjs |
-| Container | Docker + Docker Compose |
+**Stack :** React 18 + Vite + TypeScript · Node.js + Express + Prisma · PostgreSQL 16 · Docker
 
 ---
 
-## Compte admin par défaut
-
-| Champ | Valeur |
-|---|---|
-| Email | `admin@footpilot.fr` |
-| Mot de passe | `Admin123!` |
-
-> Changez ce mot de passe dès la première connexion en production.
-
----
-
-## Lancement rapide avec Docker (recommandé)
-
-Tout (base de données + backend + frontend) se lance en une commande.
+## Démarrage rapide (Docker)
 
 ```bash
-# Cloner et se placer dans le projet
-cd foot-manger
-
-# Copier les variables d'environnement (optionnel, Docker Compose a des valeurs par défaut)
-cp backend/.env.example backend/.env
-
 # Construire et démarrer tous les services
 docker compose up --build
 ```
 
 | Service | URL |
 |---|---|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:3001 |
-| Adminer (DB UI) | http://localhost:8080 |
-| PostgreSQL | localhost:5432 |
+| Application (frontend) | http://localhost:3000 |
+| API (backend) | http://localhost:3001 |
+| Interface base de données (Adminer) | http://localhost:8080 |
 
-**Connexion Adminer :**
-- Système : `PostgreSQL`
-- Serveur : `db`
-- Utilisateur : `footpilot`
-- Mot de passe : `footpilot_secret`
-- Base de données : `footpilot`
+**Connexion Adminer :** serveur `db` · utilisateur `footpilot` · mot de passe `footpilot_secret` · base `footpilot`
 
-Pour arrêter :
 ```bash
-docker compose down
+docker compose down        # Arrêter
+docker compose down -v     # Arrêter + supprimer la base de données
 ```
 
-Pour tout remettre à zéro (supprime la base de données) :
-```bash
-docker compose down -v
-```
+---
+
+## Comptes de test
+
+Créés automatiquement au démarrage par le seed.
+
+| Email | Mot de passe | Rôle |
+|---|---|---|
+| `gestionnaire@footpilot.fr` | `Gestionnaire123!` | Gestionnaire |
+| `entraineur@footpilot.fr` | `Entraineur123!` | Entraîneur |
+| `joueur1@footpilot.fr` | `Joueur123!` | Joueur |
+| `joueur2@footpilot.fr` | `Joueur123!` | Joueur |
+
+---
+
+## Rôles
+
+| Rôle | Qui | Accès |
+|---|---|---|
+| `GESTIONNAIRE` | Créateur du club | Interface `/admin` — membres, catégories, équipes, joueurs, planning, actualités |
+| `ENTRAINEUR` | Invité par le gestionnaire | Dashboard — ses équipes, feuilles d'appel, planning, actualités |
+| `JOUEUR` | Invité par le gestionnaire | Dashboard — son planning, ses statistiques |
+
+Un club est créé depuis la page publique `/create-club` — cela génère automatiquement le premier compte Gestionnaire.
+
+---
+
+## Flux d'invitation
+
+1. Le Gestionnaire se connecte → `/admin/membres`
+2. Il clique **Inviter**, renseigne l'email, le prénom, le nom et le rôle (Entraîneur ou Joueur)
+3. Un email est envoyé avec un lien valable 7 jours (ou le lien peut être copié manuellement)
+4. La personne ouvre le lien → crée son mot de passe → accède directement à son dashboard
+5. Le lien est invalidé après utilisation
 
 ---
 
 ## Développement local (sans Docker)
 
-### Prérequis
+**Prérequis :** Node.js ≥ 20 dans WSL/Linux (pas la version Windows)
 
-- Node.js >= 20 **installé dans WSL/Linux** (pas la version Windows — voir ci-dessous)
-- PostgreSQL 16 en local **ou** Docker juste pour la base
-
-> **WSL2 — important** : si `which node` retourne `/mnt/c/...`, vous utilisez le Node.js Windows.
-> Il ne fonctionne pas avec les chemins WSL. Installez Node.js dans WSL avec nvm :
+> Si `which node` retourne `/mnt/c/...`, installez Node.js dans WSL avec nvm :
 > ```bash
 > curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-> source ~/.bashrc
-> nvm install 20
-> nvm use 20
+> source ~/.bashrc && nvm install 20 && nvm use 20
 > ```
 
-### 1. Démarrer seulement la base de données
+### 1. Démarrer la base de données
 
 ```bash
 docker compose up db -d
@@ -93,178 +83,117 @@ docker compose up db -d
 
 ```bash
 cd backend
-
-# Variables d'environnement
-cp .env.example .env
-# Éditer .env si nécessaire (DATABASE_URL, JWT_SECRET)
-
-# Installer les dépendances
+cp .env.example .env          # Vérifier DATABASE_URL et JWT_SECRET
 npm install
-
-# Créer et migrer la base de données
-npx prisma migrate dev --name init
-
-# Injecter l'admin par défaut
-npm run db:seed
-
-# Démarrer en mode développement (hot-reload)
-npm run dev
+npx prisma db push            # Synchroniser le schéma
+npm run db:seed               # Injecter les données de test
+npm run dev                   # Hot-reload sur http://localhost:3001
 ```
-
-Le backend tourne sur **http://localhost:3001**.
 
 ### 3. Frontend
 
-Dans un autre terminal :
-
 ```bash
 cd frontend
-
-# Variables d'environnement
-cp .env.example .env
-
-# Installer les dépendances
 npm install
-
-# Démarrer en mode développement
-npm run dev
+npm run dev                   # Hot-reload sur http://localhost:3000
 ```
-
-Le frontend tourne sur **http://localhost:3000**.
 
 ---
 
 ## Variables d'environnement
 
-### Backend (`backend/.env`)
+### `backend/.env`
 
-| Variable | Description | Valeur par défaut |
+| Variable | Description | Défaut |
 |---|---|---|
-| `DATABASE_URL` | URL de connexion PostgreSQL | `postgresql://footpilot:footpilot_secret@localhost:5432/footpilot` |
-| `JWT_SECRET` | Clé secrète pour signer les JWT | ⚠️ À changer en prod |
-| `PORT` | Port du serveur Express | `3001` |
-| `NODE_ENV` | Environnement Node | `development` |
+| `DATABASE_URL` | URL PostgreSQL | `postgresql://footpilot:footpilot_secret@localhost:5432/footpilot` |
+| `JWT_SECRET` | Clé de signature JWT | ⚠️ À changer en production |
+| `PORT` | Port Express | `3001` |
+| `SMTP_HOST` | Serveur SMTP | `smtp.ethereal.email` |
+| `SMTP_PORT` | Port SMTP | `587` |
+| `SMTP_USER` | Identifiant SMTP | — |
+| `SMTP_PASS` | Mot de passe SMTP | — |
+| `SMTP_FROM` | Adresse expéditeur | `noreply@footpilot.fr` |
+| `APP_URL` | URL du frontend (pour les liens d'invitation) | `http://localhost:3000` |
 
-### Frontend (`frontend/.env`)
+### `frontend/.env`
 
-| Variable | Description | Valeur par défaut |
+| Variable | Description | Défaut (build Docker) |
 |---|---|---|
-| `VITE_API_URL` | URL du backend (build Docker) | `http://localhost:3001` |
+| `VITE_API_URL` | URL du backend | `http://localhost:3001` |
 
 ---
 
-## Commandes utiles
+## API — Référence des routes
 
-### Base de données
+### Authentification (`/api/auth`)
 
-> **Note Docker** : le container utilise `prisma db push` (pas de migration history) pour simplifier le démarrage.
-> En local (`npm run dev`), utilisez `prisma migrate dev` pour générer des fichiers de migration versionnés.
-
-```bash
-# Créer une nouvelle migration après modification du schema Prisma (local dev)
-cd backend && npx prisma migrate dev --name <nom>
-
-# Ouvrir l'interface graphique Prisma Studio
-npm run db:studio
-
-# Relancer uniquement le seed (admin par défaut)
-npm run db:seed
-```
-
-### Docker
-
-```bash
-# Voir les logs en temps réel
-docker compose logs -f
-
-# Logs d'un service spécifique
-docker compose logs -f backend
-
-# Reconstruire un seul service
-docker compose up --build backend
-
-# Se connecter à PostgreSQL
-docker compose exec db psql -U footpilot -d footpilot
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm run build    # Build de production
-npm run preview  # Prévisualiser le build de production
-```
-
----
-
-## API — Endpoints disponibles
-
-### Auth (`/api/auth`)
-
-| Méthode | Route | Description | Auth requise |
+| Méthode | Route | Description | Authentification |
 |---|---|---|---|
-| `POST` | `/api/auth/login` | Connexion email + mot de passe | Non |
-| `GET` | `/api/auth/invitation/:token` | Valider un token d'invitation | Non |
+| `POST` | `/api/auth/create-club` | Créer un club + compte Gestionnaire | Non |
+| `POST` | `/api/auth/login` | Connexion | Non |
+| `GET` | `/api/auth/invitation/:token` | Vérifier un token d'invitation | Non |
 | `POST` | `/api/auth/register` | Créer un compte via invitation | Non |
-| `GET` | `/api/auth/me` | Profil utilisateur courant | Oui |
+| `GET` | `/api/auth/me` | Profil de l'utilisateur connecté | Oui |
 
-### Admin (`/api/admin`) — ADMIN ou GESTIONNAIRE
+### Gestionnaire (`/api/gestionnaire`) — Gestionnaire uniquement
 
 | Méthode | Route | Description |
 |---|---|---|
-| `GET` | `/api/admin/users` | Liste tous les utilisateurs |
-| `PATCH` | `/api/admin/users/:id/role` | Modifier le rôle d'un utilisateur (ADMIN seulement) |
-| `DELETE` | `/api/admin/users/:id` | Supprimer un utilisateur (ADMIN seulement) |
-| `GET` | `/api/admin/invitations` | Liste toutes les invitations |
-| `POST` | `/api/admin/invitations` | Créer une invitation |
-| `DELETE` | `/api/admin/invitations/:id` | Supprimer une invitation (ADMIN seulement) |
+| `GET` | `/api/gestionnaire/users` | Membres du club |
+| `PATCH` | `/api/gestionnaire/users/:id/role` | Changer le rôle |
+| `PATCH` | `/api/gestionnaire/users/:id/active` | Activer / désactiver |
+| `DELETE` | `/api/gestionnaire/users/:id` | Supprimer |
+| `GET` | `/api/gestionnaire/invitations` | Liste des invitations |
+| `POST` | `/api/gestionnaire/invitations` | Créer une invitation |
+| `DELETE` | `/api/gestionnaire/invitations/:id` | Supprimer une invitation |
 
-### Corps des requêtes
+### Clubs, Catégories, Équipes
 
-**POST `/api/auth/login`**
-```json
-{ "email": "admin@footpilot.fr", "password": "Admin123!" }
-```
+| Méthode | Route | Rôle minimum |
+|---|---|---|
+| `GET` | `/api/clubs/:id` | Tous |
+| `PUT` | `/api/clubs/:id` | Gestionnaire |
+| `GET` | `/api/clubs/:id/membres` | Entraîneur |
+| `GET/POST/PUT/DELETE` | `/api/categories` | Gestionnaire |
+| `GET/POST/PUT` | `/api/equipes` | Entraîneur |
+| `DELETE` | `/api/equipes/:id` | Gestionnaire |
+| `POST` | `/api/equipes/:id/joueurs` | Entraîneur |
+| `POST` | `/api/equipes/:id/entraineurs` | Gestionnaire |
 
-**POST `/api/admin/invitations`**
-```json
-{ "email": "joueur@exemple.com", "role": "JOUEUR", "expiresInDays": 7 }
-```
+### Joueurs et Entraîneurs
 
-**POST `/api/auth/register`**
-```json
-{
-  "token": "le-token-d-invitation",
-  "email": "joueur@exemple.com",
-  "firstName": "Jean",
-  "lastName": "Dupont",
-  "password": "MonMotDePasse123",
-  "birthDate": "1998-05-15"
-}
-```
+| Méthode | Route | Description | Rôle minimum |
+|---|---|---|---|
+| `GET` | `/api/joueurs` | Liste des joueurs du club | Entraîneur |
+| `POST` | `/api/joueurs` | Ajouter un joueur manuellement | Entraîneur |
+| `PUT` | `/api/joueurs/:id` | Modifier un joueur | Entraîneur |
+| `DELETE` | `/api/joueurs/:id` | Supprimer un joueur | Gestionnaire |
+| `GET` | `/api/entraineurs` | Liste des entraîneurs | Gestionnaire |
+| `PUT` | `/api/entraineurs/:id` | Modifier un entraîneur | Propriétaire ou Gestionnaire |
 
----
+### Événements, Matchs, Entraînements
 
-## Rôles utilisateurs
+| Méthode | Route | Description | Rôle minimum |
+|---|---|---|---|
+| `GET/POST/PUT/DELETE` | `/api/evenements` | CRUD événements | Entraîneur |
+| `POST` | `/api/matchs/:id/buts` | Ajouter un but | Entraîneur |
+| `DELETE` | `/api/matchs/:id/buts/:butId` | Supprimer un but | Entraîneur |
+| `GET` | `/api/matchs/:id/buts` | Liste des buts | Tous |
+| `PUT` | `/api/matchs/:id/score` | Saisir le score | Entraîneur |
+| `POST/GET` | `/api/matchs/:id/convocations` | Gérer la liste des convoqués | Entraîneur |
+| `POST/GET` | `/api/entrainements/:id/appel` | Feuille d'appel | Entraîneur |
 
-| Rôle | Accès |
-|---|---|
-| `ADMIN` | Tout — gestion des utilisateurs, invitations, rôles |
-| `GESTIONNAIRE` | Gestion (pas les rôles, pas supprimer) — peut inviter sauf ADMIN |
-| `ENTRAINEUR` | Dashboard entraîneur — planning, feuilles d'appel |
-| `JOUEUR` | Dashboard joueur — planning, stats personnelles |
+### Statistiques et Actualités
 
----
-
-## Flux d'invitation
-
-1. L'admin se connecte sur `/login` avec `admin@footpilot.fr`
-2. Il accède au dashboard admin `/admin`
-3. Il clique sur **➕ Inviter** et choisit le rôle + email optionnel
-4. Il copie le lien généré (ex: `http://localhost:3000/register/abc123`)
-5. Il envoie le lien à la personne concernée
-6. La personne ouvre le lien, remplit ses infos et crée son compte
-7. Le lien est invalidé après utilisation
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` | `/api/statistiques/joueurs/:id` | Stats d'un joueur |
+| `GET` | `/api/statistiques/equipes/:id` | Stats d'une équipe |
+| `GET` | `/api/statistiques/clubs/:id` | Stats globales du club |
+| `GET` | `/api/actualites` | Fil d'actualités du club |
+| `POST` | `/api/actualites` | Publier une actualité (Entraîneur+) |
+| `DELETE` | `/api/actualites/:id` | Supprimer (Gestionnaire) |
 
 ---
 
@@ -274,37 +203,125 @@ npm run preview  # Prévisualiser le build de production
 foot-manger/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma      # Modèles de données
-│   │   └── seed.ts            # Données initiales (admin)
-│   ├── src/
-│   │   ├── lib/prisma.ts      # Client Prisma singleton
-│   │   ├── middleware/auth.ts  # JWT + vérification de rôle
-│   │   ├── routes/
-│   │   │   ├── auth.ts        # Login, register, invitation
-│   │   │   └── admin.ts       # Gestion users + invitations
-│   │   └── index.ts           # Entrée Express
-│   ├── Dockerfile
-│   └── package.json
+│   │   ├── schema.prisma       # Modèles de données (source de vérité)
+│   │   └── seed.ts             # Données de test
+│   └── src/
+│       ├── middleware/auth.ts  # Vérification JWT + contrôle des rôles
+│       ├── lib/
+│       │   ├── prisma.ts       # Client Prisma singleton
+│       │   └── email.ts        # Envoi d'emails (invitations, actualités)
+│       ├── routes/
+│       │   ├── auth.ts         # Login, register, invitation, create-club
+│       │   ├── gestionnaire.ts # Gestion des membres et invitations
+│       │   ├── clubs.ts
+│       │   ├── categories.ts
+│       │   ├── equipes.ts
+│       │   ├── joueurs.ts
+│       │   ├── entraineurs.ts
+│       │   ├── evenements.ts
+│       │   ├── matchs.ts
+│       │   ├── entrainements.ts
+│       │   ├── statistiques.ts
+│       │   └── actualites.ts
+│       └── index.ts            # Point d'entrée Express
 ├── frontend/
-│   ├── src/
-│   │   ├── api/               # Appels HTTP (axios)
-│   │   ├── components/
-│   │   │   ├── layout/        # PhoneShell, BottomNav, RequireAuth
-│   │   │   └── ui/            # Button, Input, Card, Badge
-│   │   ├── contexts/          # AuthContext (JWT + user)
-│   │   ├── pages/
-│   │   │   ├── SplashPage.tsx
-│   │   │   ├── LoginPage.tsx
-│   │   │   ├── RegisterPage.tsx
-│   │   │   ├── DashboardPage.tsx
-│   │   │   └── admin/
-│   │   │       ├── DashboardPage.tsx
-│   │   │       └── CreateInvitationModal.tsx
-│   │   ├── types/index.ts
-│   │   └── App.tsx
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── package.json
+│   └── src/
+│       ├── api/                # Fonctions d'appel HTTP (axios)
+│       ├── components/
+│       │   ├── layout/         # Sidebar, BottomNav, RequireAuth
+│       │   └── ui/             # Button, Input, Card, Badge, Modal…
+│       ├── contexts/           # AuthContext (JWT + user)
+│       ├── pages/
+│       │   ├── admin/          # Pages Gestionnaire (/admin/*)
+│       │   └── dashboard/      # Pages Entraîneur + Joueur (/dashboard/*)
+│       ├── types/index.ts      # Types TypeScript partagés
+│       └── App.tsx             # Routage + protection par rôle
 ├── docker-compose.yml
 └── README.md
+```
+
+---
+
+## Envoi d'emails (invitations)
+
+### Ce qui est en place
+
+À chaque création d'invitation (page **Membres & invitations → Inviter**), le backend appelle automatiquement `sendInvitationEmail` qui envoie un email HTML avec le lien de création de compte. Le lien ressemble à :
+
+```
+http://<APP_URL>/register/<token>
+```
+
+En local **sans configuration SMTP**, l'envoi échoue silencieusement (l'invitation est quand même créée, et le lien peut être copié manuellement depuis l'onglet Invitations).
+
+### Activer les emails en production
+
+Ajoutez les variables SMTP dans `docker-compose.yml` (section `backend > environment`) ou dans `backend/.env` (développement local) :
+
+```yaml
+# docker-compose.yml — section backend > environment
+SMTP_HOST: smtp.gmail.com
+SMTP_PORT: "587"
+SMTP_USER: votre@gmail.com
+SMTP_PASS: "xxxx xxxx xxxx xxxx"   # App Password Gmail (pas le mot de passe du compte)
+SMTP_FROM: "FootPilot <votre@gmail.com>"
+APP_URL: http://localhost:3000      # ou votre domaine en production
+```
+
+#### Option A — Gmail (le plus simple)
+
+1. Activez la [validation en deux étapes](https://myaccount.google.com/security) sur votre compte Google
+2. Allez dans **Sécurité → Mots de passe des applications**
+3. Créez un mot de passe pour "Application personnalisée"
+4. Copiez le mot de passe généré (16 caractères) dans `SMTP_PASS`
+
+#### Option B — Brevo (ex-Sendinblue) — 300 emails/jour gratuits
+
+1. Créez un compte sur [brevo.com](https://www.brevo.com)
+2. **SMTP & API → Clés SMTP** → notez le login et le mot de passe
+3. `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`
+
+#### Option C — Resend — 3 000 emails/mois gratuits
+
+1. Créez un compte sur [resend.com](https://resend.com)
+2. Vérifiez votre domaine (ou utilisez `onboarding@resend.dev` pour tester)
+3. `SMTP_HOST=smtp.resend.com`, `SMTP_PORT=465`, `SMTP_USER=resend`, `SMTP_PASS=<votre_API_key>`
+
+#### Tester sans vrai compte (Ethereal — emails fictifs)
+
+[Ethereal Email](https://ethereal.email) intercepte les emails sans les envoyer — utile pour développer :
+
+```bash
+# Créer un compte jetable sur https://ethereal.email/create
+# puis renseigner les identifiants fournis :
+SMTP_HOST=smtp.ethereal.email
+SMTP_PORT=587
+SMTP_USER=xxx@ethereal.email
+SMTP_PASS=xxxxx
+```
+
+Les emails envoyés apparaissent dans la boîte Ethereal (pas dans une vraie boîte mail).
+
+---
+
+## Commandes utiles
+
+```bash
+# Schéma Prisma → synchroniser la base (développement)
+cd backend && npx prisma db push
+
+# Régénérer les types TypeScript Prisma (après modification du schema)
+cd backend && npx prisma generate
+
+# Remettre les données de test à zéro
+cd backend && npm run db:seed
+
+# Ouvrir Prisma Studio (interface graphique de la base)
+cd backend && npm run db:studio
+
+# Rebuild d'un seul service Docker
+docker compose up --build backend
+
+# Logs en temps réel
+docker compose logs -f backend
 ```

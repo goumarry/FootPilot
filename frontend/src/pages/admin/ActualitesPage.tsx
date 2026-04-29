@@ -69,7 +69,7 @@ export default function ActualitesPage() {
     setActualites((prev) => prev.filter((a) => a.id !== id));
   }
 
-  const canPublish = user?.role === 'GESTIONNAIRE' || user?.role === 'ADMIN' || user?.role === 'ENTRAINEUR';
+  const canPublish = user?.role === 'GESTIONNAIRE' || user?.role === 'ENTRAINEUR';
 
   return (
     <AppLayout>

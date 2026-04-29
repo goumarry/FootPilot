@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/actualites
-router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = actualiteSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -63,7 +63,6 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), as
     },
   });
 
-  // Envoi email async (ne bloque pas la réponse)
   prisma.user.findMany({
     where: { clubId, isActive: true, email: { not: '' } },
     select: { email: true },
@@ -75,17 +74,17 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), as
       titre: actualite.titre,
       contenu: actualite.contenu,
       auteur: `${actualite.auteur.firstName} ${actualite.auteur.lastName}`,
-    }).catch(() => {}); // silently ignore email errors
+    }).catch(() => {});
   });
 
   return res.status(201).json(actualite);
 });
 
 // DELETE /api/actualites/:id
-router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ADMIN), async (req, res) => {
+router.delete('/:id', requireRole(Role.GESTIONNAIRE), async (req, res) => {
   const actu = await prisma.actualite.findUnique({ where: { id: req.params.id } });
   if (!actu) return res.status(404).json({ message: 'Actualité introuvable.' });
-  if (actu.clubId !== req.user!.clubId && req.user!.role !== Role.ADMIN) {
+  if (actu.clubId !== req.user!.clubId) {
     return res.status(403).json({ message: 'Accès interdit.' });
   }
   await prisma.actualite.delete({ where: { id: req.params.id } });

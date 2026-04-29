@@ -18,7 +18,7 @@ const presenceSchema = z.object({
 });
 
 // POST /api/entrainements/:id/appel
-router.post('/:id/appel', requireRole(Role.GESTIONNAIRE, Role.ADMIN, Role.ENTRAINEUR), async (req, res) => {
+router.post('/:id/appel', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = presenceSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -46,10 +46,26 @@ router.get('/:id/appel', async (req, res) => {
   const presences = await prisma.presenceEntrainement.findMany({
     where: { entrainementId: req.params.id },
     include: {
-      joueur: { select: { id: true, firstName: true, lastName: true, photoUrl: true } },
+      joueur: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          photoUrl: true,
+          user: { select: { firstName: true, lastName: true } },
+        },
+      },
     },
   });
-  return res.json(presences);
+  return res.json(presences.map((p) => ({
+    ...p,
+    joueur: {
+      id: p.joueur.id,
+      firstName: p.joueur.user?.firstName ?? p.joueur.firstName ?? '',
+      lastName: p.joueur.user?.lastName ?? p.joueur.lastName ?? '',
+      photoUrl: p.joueur.photoUrl,
+    },
+  })));
 });
 
 export default router;
