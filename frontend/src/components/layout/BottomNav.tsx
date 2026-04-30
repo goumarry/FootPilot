@@ -1,32 +1,34 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Calendar, Newspaper, User, Shield, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { clsx } from '@/lib/clsx';
 
 export default function BottomNav() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const role = user?.role ?? 'JOUEUR';
 
-  const itemsByRole: Record<string, Array<{ to: string; icon: React.ElementType; label: string; end?: boolean }>> = {
+  const itemsByRole: Record<string, Array<{ to: string; icon: React.ElementType; labelKey: string; end?: boolean }>> = {
     GESTIONNAIRE: [
-      { to: '/admin', icon: LayoutDashboard, label: 'Accueil', end: true },
-      { to: '/admin/joueurs', icon: User, label: 'Joueurs' },
-      { to: '/admin/planning', icon: Calendar, label: 'Planning' },
-      { to: '/admin/actualites', icon: Newspaper, label: 'Actus' },
-      { to: '/admin/equipes', icon: Shield, label: 'Équipes' },
+      { to: '/admin', icon: LayoutDashboard, labelKey: 'nav.home', end: true },
+      { to: '/admin/joueurs', icon: User, labelKey: 'nav.players' },
+      { to: '/admin/planning', icon: Calendar, labelKey: 'nav.planning' },
+      { to: '/admin/actualites', icon: Newspaper, labelKey: 'nav.actus' },
+      { to: '/admin/equipes', icon: Shield, labelKey: 'nav.teams' },
     ],
     ENTRAINEUR: [
-      { to: '/admin', icon: LayoutDashboard, label: 'Accueil', end: true },
-      { to: '/admin/joueurs', icon: User, label: 'Joueurs' },
-      { to: '/admin/equipes', icon: Shield, label: 'Équipes' },
-      { to: '/admin/planning', icon: Calendar, label: 'Planning' },
-      { to: '/admin/actualites', icon: Newspaper, label: 'Actus' },
+      { to: '/admin', icon: LayoutDashboard, labelKey: 'nav.home', end: true },
+      { to: '/admin/joueurs', icon: User, labelKey: 'nav.players' },
+      { to: '/admin/equipes', icon: Shield, labelKey: 'nav.teams' },
+      { to: '/admin/planning', icon: Calendar, labelKey: 'nav.planning' },
+      { to: '/admin/actualites', icon: Newspaper, labelKey: 'nav.actus' },
     ],
     JOUEUR: [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Accueil', end: true },
-      { to: '/dashboard/planning', icon: Calendar, label: 'Planning' },
-      { to: '/dashboard/actualites', icon: Newspaper, label: 'Actus' },
-      { to: '/dashboard/stats', icon: Trophy, label: 'Stats' },
+      { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.home', end: true },
+      { to: '/dashboard/planning', icon: Calendar, labelKey: 'nav.planning' },
+      { to: '/dashboard/actualites', icon: Newspaper, labelKey: 'nav.actus' },
+      { to: '/dashboard/stats', icon: Trophy, labelKey: 'nav.stats' },
     ],
   };
 
@@ -53,7 +55,7 @@ export default function BottomNav() {
                 <>
                   <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
                   <span className={clsx('text-[10px] font-semibold', isActive && 'text-violet-600 dark:text-violet-400')}>
-                    {item.label}
+                    {t(item.labelKey)}
                   </span>
                 </>
               )}

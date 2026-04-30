@@ -4,12 +4,14 @@ import { getClub, updateClub } from '@/api/clubs';
 import { uploadClubLogo } from '@/api/images';
 import type { Club } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 
 export default function ClubPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [form, setForm] = useState({ nom: '', ville: '', description: '' });
@@ -39,7 +41,7 @@ export default function ClubPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          "Impossible de téléverser le logo.",
+          t('club.uploadError'),
       );
     } finally {
       setUploadingLogo(false);
@@ -50,7 +52,7 @@ export default function ClubPage() {
   async function handleSave() {
     if (!club) return;
     if (!form.nom.trim() || !form.ville.trim()) {
-      setError('Le nom et la ville sont requis.');
+      setError(t('club.nameRequired'));
       return;
     }
     setSaving(true);
@@ -67,7 +69,7 @@ export default function ClubPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la sauvegarde.',
+          t('club.saveError'),
       );
     } finally {
       setSaving(false);
@@ -83,36 +85,34 @@ export default function ClubPage() {
           </div>
           <div>
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-0.5">
-              Administration
+              {t('club.subtitle')}
             </p>
-            <h1 className="text-2xl font-extrabold text-slate-50">Paramètres du club</h1>
+            <h1 className="text-2xl font-extrabold text-slate-50">{t('club.title')}</h1>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : (
           <div className="space-y-1">
-            {/* Stats */}
             {club?._count && (
               <div className="grid grid-cols-2 gap-3 mb-6">
-                <Stat label="Membres" value={club._count.users} />
-                <Stat label="Équipes" value={club._count.equipes} />
-                <Stat label="Joueurs" value={club._count.joueurs} />
-                <Stat label="Catégories" value={club._count.categories} />
+                <Stat label={t('club.members')} value={club._count.users} />
+                <Stat label={t('club.teams')} value={club._count.equipes} />
+                <Stat label={t('club.players')} value={club._count.joueurs} />
+                <Stat label={t('club.categories')} value={club._count.categories} />
               </div>
             )}
 
-            {/* Logo */}
             <div className="mb-6">
               <p className="text-xs font-semibold text-slate-400 mb-2 tracking-wide uppercase">
-                Logo du club
+                {t('club.logo')}
               </p>
               <div className="flex items-center gap-4">
                 <div className="relative flex-shrink-0">
                   <div className="w-16 h-16 rounded-xl overflow-hidden bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
                     {club?.logoUrl ? (
-                      <img src={club.logoUrl} alt="Logo du club" className="w-full h-full object-cover" />
+                      <img src={club.logoUrl} alt={t('club.logo')} className="w-full h-full object-cover" />
                     ) : (
                       <Shield size={24} className="text-violet-400" />
                     )}
@@ -127,9 +127,9 @@ export default function ClubPage() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-300">
-                    {uploadingLogo ? 'Traitement en cours…' : (club?.logoUrl ? 'Logo défini' : 'Aucun logo')}
+                    {uploadingLogo ? t('club.uploading') : (club?.logoUrl ? t('club.logoSet') : t('club.noLogo'))}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">JPEG, PNG ou WebP · max 5 Mo</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t('club.logoHint')}</p>
                 </div>
               </div>
               <input
@@ -142,25 +142,25 @@ export default function ClubPage() {
             </div>
 
             <Input
-              label="Nom du club"
+              label={t('club.nameLabel')}
               placeholder="AS FootPilot FC"
               value={form.nom}
               onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
             />
             <Input
-              label="Ville"
+              label={t('club.cityLabel')}
               placeholder="Paris"
               value={form.ville}
               onChange={(e) => setForm((f) => ({ ...f, ville: e.target.value }))}
             />
             <div className="mb-4">
               <label className="block text-xs font-semibold text-slate-400 mb-1.5 tracking-wide uppercase">
-                Description (optionnel)
+                {t('club.descriptionLabel')}
               </label>
               <textarea
                 className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl py-2.5 px-4 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40 resize-none"
                 rows={3}
-                placeholder="Présentation du club…"
+                placeholder={t('club.descriptionPlaceholder')}
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
@@ -171,7 +171,7 @@ export default function ClubPage() {
             <div className="pt-4">
               <Button full onClick={handleSave} loading={saving}>
                 <Save size={15} />
-                {saved ? 'Enregistré !' : 'Enregistrer'}
+                {saved ? t('club.saved') : t('common.save')}
               </Button>
             </div>
           </div>

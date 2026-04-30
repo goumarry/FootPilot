@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Shield, Users } from 'lucide-react';
 import { getEquipes } from '@/api/equipes';
 import type { Equipe } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import EmptyState from '@/components/ui/EmptyState';
 
 export default function EquipesPageDashboard() {
+  const { t } = useI18n();
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,17 +19,17 @@ export default function EquipesPageDashboard() {
     <AppLayout>
       <div className="p-6 max-w-3xl">
         <div className="mb-6">
-          <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Entraîneur</p>
-          <h1 className="text-2xl font-extrabold text-slate-50">Mes équipes</h1>
+          <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('roles.ENTRAINEUR')}</p>
+          <h1 className="text-2xl font-extrabold text-slate-50">{t('teams.myTeams')}</h1>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : equipes.length === 0 ? (
           <EmptyState
             icon={<Shield size={22} />}
-            title="Aucune équipe assignée"
-            description="Contactez votre gestionnaire pour être assigné à une équipe."
+            title={t('teams.noAssignedTeams')}
+            description={t('teams.noAssignedTeamsDesc')}
           />
         ) : (
           <div className="space-y-3">

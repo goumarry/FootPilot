@@ -3,7 +3,7 @@ import { Users, Plus, Trash2, Copy, Check, Mail, UserCheck, UserX, Key, Clock } 
 import { getUsers, getInvitations, createInvitation, deleteInvitation, toggleUserActive } from '@/api/admin';
 import { getJoinCodes, createJoinCode, deleteJoinCode } from '@/api/join-codes';
 import type { User, Invitation, Role, JoinCode } from '@/types';
-import { ROLE_LABELS } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -17,16 +17,17 @@ type Tab = 'membres' | 'invitations' | 'codes';
 
 function timeLeft(dateStr: string): string {
   const diff = new Date(dateStr).getTime() - Date.now();
-  if (diff <= 0) return 'Expiré';
+  if (diff <= 0) return '—';
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
-  if (h >= 24) return `${Math.floor(h / 24)}j ${h % 24}h`;
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
   if (h > 0) return `${h}h ${m}min`;
   return `${m} min`;
 }
 
 export default function MembresPage() {
   const { user: currentUser } = useAuth();
+  const { t } = useI18n();
   const isEntraineur = currentUser?.role === 'ENTRAINEUR';
 
   const [tab, setTab] = useState<Tab>('membres');
@@ -71,7 +72,7 @@ export default function MembresPage() {
 
   async function handleInvite() {
     if (!form.email || !form.firstName || !form.lastName) {
-      setFormError('Tous les champs sont requis.');
+      setFormError(t('members.allRequired'));
       return;
     }
     setSaving(true);
@@ -85,7 +86,7 @@ export default function MembresPage() {
     } catch (err: unknown) {
       setFormError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la création.',
+          t('members.createError'),
       );
     } finally {
       setSaving(false);
@@ -103,7 +104,7 @@ export default function MembresPage() {
     } catch (err: unknown) {
       setFormError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la création.',
+          t('members.createError'),
       );
     } finally {
       setSaving(false);
@@ -111,13 +112,13 @@ export default function MembresPage() {
   }
 
   async function handleDeleteInvitation(id: string) {
-    if (!confirm('Supprimer cette invitation ?')) return;
+    if (!confirm(t('members.deleteInvite'))) return;
     await deleteInvitation(id);
     setInvitations((prev) => prev.filter((i) => i.id !== id));
   }
 
   async function handleDeleteCode(id: string) {
-    if (!confirm('Supprimer ce code ?')) return;
+    if (!confirm(t('members.deleteCode'))) return;
     await deleteJoinCode(id);
     setJoinCodes((prev) => prev.filter((c) => c.id !== id));
   }
@@ -130,55 +131,52 @@ export default function MembresPage() {
   const now = new Date();
   const activeCodes = joinCodes.filter((c) => new Date(c.expiresAt) > now);
 
+  const tabLabels: Record<Tab, string> = {
+    membres: `${t('members.tabMembers')} (${users.length})`,
+    invitations: `${t('members.tabInvitations')} (${invitations.length})`,
+    codes: `${t('members.tabCodes')} (${activeCodes.length})`,
+  };
+
   return (
     <AppLayout>
       <div className="p-6 max-w-4xl">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Gestion</p>
-            <h1 className="text-2xl font-extrabold text-slate-50">Membres & invitations</h1>
+            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('members.subtitle')}</p>
+            <h1 className="text-2xl font-extrabold text-slate-50">{t('members.title')}</h1>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => { setFormError(''); setShowCodeModal(true); }}>
               <Key size={14} />
-              <span className="hidden sm:inline">Code d'accès</span>
+              <span className="hidden sm:inline">{t('members.codeAccess')}</span>
             </Button>
             <Button onClick={() => { setFormError(''); setShowModal(true); }}>
               <Plus size={15} />
-              <span>Inviter</span>
+              <span>{t('members.invite')}</span>
             </Button>
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 bg-slate-800/60 rounded-xl p-1 mb-6 w-fit">
-          {(['membres', 'invitations', 'codes'] as Tab[]).map((t) => {
-            const label = t === 'membres'
-              ? `Membres (${users.length})`
-              : t === 'invitations'
-              ? `Invitations (${invitations.length})`
-              : `Codes (${activeCodes.length})`;
-            return (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  tab === t ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+          {(['membres', 'invitations', 'codes'] as Tab[]).map((tabKey) => (
+            <button
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                tab === tabKey ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {tabLabels[tabKey]}
+            </button>
+          ))}
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-500 text-sm">Chargement…</div>
+          <div className="flex items-center justify-center py-20 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : tab === 'membres' ? (
           <div className="space-y-2">
             {users.length === 0 ? (
-              <EmptyState icon={<Users size={22} />} title="Aucun membre" description="Invitez des membres via le bouton ci-dessus." />
+              <EmptyState icon={<Users size={22} />} title={t('members.noMembers')} description={t('members.noMembersDesc')} />
             ) : (
               users.map((u) => (
                 <div key={u.id} className="flex items-center gap-3 bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3">
@@ -197,7 +195,7 @@ export default function MembresPage() {
                   <button
                     onClick={() => handleToggleActive(u.id, u.isActive ?? true)}
                     className="text-slate-500 hover:text-slate-300 transition-colors"
-                    title={u.isActive ? 'Désactiver' : 'Réactiver'}
+                    title={u.isActive ? t('members.disable') : t('members.reactivate')}
                   >
                     {u.isActive ? <UserCheck size={16} /> : <UserX size={16} className="text-red-400" />}
                   </button>
@@ -208,7 +206,7 @@ export default function MembresPage() {
         ) : tab === 'invitations' ? (
           <div className="space-y-2">
             {invitations.length === 0 ? (
-              <EmptyState icon={<Mail size={22} />} title="Aucune invitation" description="Créez une invitation pour ajouter un membre." />
+              <EmptyState icon={<Mail size={22} />} title={t('members.noInvitations')} description={t('members.noInvitationsDesc')} />
             ) : (
               invitations.map((inv) => {
                 const expired = new Date(inv.expiresAt) < now;
@@ -224,14 +222,14 @@ export default function MembresPage() {
                     </div>
                     <RoleBadge role={inv.role} />
                     {used ? (
-                      <StatusBadge label="Utilisée" variant="success" />
+                      <StatusBadge label={t('members.statusUsed')} variant="success" />
                     ) : expired ? (
-                      <StatusBadge label="Expirée" variant="error" />
+                      <StatusBadge label={t('members.statusExpired')} variant="error" />
                     ) : (
-                      <StatusBadge label="Active" variant="warning" />
+                      <StatusBadge label={t('members.statusActive')} variant="warning" />
                     )}
                     {!used && !expired && (
-                      <button onClick={() => copyLink(inv.token, inv.id)} className="text-slate-500 hover:text-violet-400 transition-colors" title="Copier le lien">
+                      <button onClick={() => copyLink(inv.token, inv.id)} className="text-slate-500 hover:text-violet-400 transition-colors" title={t('members.copyLink')}>
                         {copiedId === inv.id ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
                       </button>
                     )}
@@ -244,10 +242,9 @@ export default function MembresPage() {
             )}
           </div>
         ) : (
-          /* Codes d'accès */
           <div className="space-y-2">
             {joinCodes.length === 0 ? (
-              <EmptyState icon={<Key size={22} />} title="Aucun code" description="Créez un code pour permettre à quelqu'un de rejoindre le club sans invitation." />
+              <EmptyState icon={<Key size={22} />} title={t('members.noCodes')} description={t('members.noCodesDesc')} />
             ) : (
               joinCodes.map((jc) => {
                 const expired = new Date(jc.expiresAt) < now;
@@ -259,18 +256,21 @@ export default function MembresPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-lg font-bold tracking-widest text-slate-100">{jc.code}</p>
                       <p className="text-xs text-slate-500">
-                        {jc.usedCount} utilisation{jc.usedCount !== 1 ? 's' : ''} · par {jc.creator?.firstName}
+                        {jc.usedCount === 1
+                          ? t('members.usageCount').replace('{n}', String(jc.usedCount))
+                          : t('members.usageCountPlural').replace('{n}', String(jc.usedCount))}
+                        {' · '}{t('members.by')} {jc.creator?.firstName}
                       </p>
                     </div>
                     <RoleBadge role={jc.role} />
                     <div className="flex items-center gap-1 text-xs text-slate-500">
                       <Clock size={12} />
                       <span className={expired ? 'text-red-400' : 'text-slate-400'}>
-                        {expired ? 'Expiré' : timeLeft(jc.expiresAt)}
+                        {expired ? t('members.expiredLabel') : timeLeft(jc.expiresAt)}
                       </span>
                     </div>
                     {!expired && (
-                      <button onClick={() => copyCode(jc.code, jc.id)} className="text-slate-500 hover:text-violet-400 transition-colors" title="Copier le code">
+                      <button onClick={() => copyCode(jc.code, jc.id)} className="text-slate-500 hover:text-violet-400 transition-colors" title={t('members.copyCode')}>
                         {copiedId === jc.id ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
                       </button>
                     )}
@@ -285,54 +285,50 @@ export default function MembresPage() {
         )}
       </div>
 
-      {/* Modal invitation */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Inviter un membre">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={t('members.inviteTitle')}>
         <div className="space-y-0">
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Prénom" placeholder="Jean" value={form.firstName}
+            <Input label={t('members.firstName')} placeholder="Jean" value={form.firstName}
               onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} required />
-            <Input label="Nom" placeholder="Dupont" value={form.lastName}
+            <Input label={t('members.lastName')} placeholder="Dupont" value={form.lastName}
               onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} required />
           </div>
-          <Input label="Email" type="email" placeholder="membre@email.fr" value={form.email}
+          <Input label={t('members.email')} type="email" placeholder="membre@email.fr" value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} required />
-          <Select label="Rôle" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Role }))}>
-            {!isEntraineur && <option value="GESTIONNAIRE">{ROLE_LABELS.GESTIONNAIRE}</option>}
-            <option value="ENTRAINEUR">{ROLE_LABELS.ENTRAINEUR}</option>
-            <option value="JOUEUR">{ROLE_LABELS.JOUEUR}</option>
+          <Select label={t('members.roleLabel')} value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Role }))}>
+            {!isEntraineur && <option value="GESTIONNAIRE">{t('roles.GESTIONNAIRE')}</option>}
+            <option value="ENTRAINEUR">{t('roles.ENTRAINEUR')}</option>
+            <option value="JOUEUR">{t('roles.JOUEUR')}</option>
           </Select>
           {formError && <p className="text-xs text-red-400 mb-3">{formError}</p>}
-          <p className="text-xs text-slate-500 mb-4">Un email sera envoyé avec un lien valable 7 jours.</p>
+          <p className="text-xs text-slate-500 mb-4">{t('members.emailNotice')}</p>
           <div className="flex gap-3">
-            <Button variant="secondary" full onClick={() => setShowModal(false)}>Annuler</Button>
-            <Button full onClick={handleInvite} loading={saving}>Envoyer</Button>
+            <Button variant="secondary" full onClick={() => setShowModal(false)}>{t('common.cancel')}</Button>
+            <Button full onClick={handleInvite} loading={saving}>{t('common.send')}</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Modal code d'accès */}
-      <Modal open={showCodeModal} onClose={() => setShowCodeModal(false)} title="Créer un code d'accès">
-        <p className="text-sm text-slate-400 mb-4">
-          Un code court que n'importe qui peut utiliser pour rejoindre le club pendant la durée définie.
-        </p>
-        <Select label="Rôle accordé" value={codeForm.role}
+      <Modal open={showCodeModal} onClose={() => setShowCodeModal(false)} title={t('members.codeTitle')}>
+        <p className="text-sm text-slate-400 mb-4">{t('members.codeDesc')}</p>
+        <Select label={t('members.codeRole')} value={codeForm.role}
           onChange={(e) => setCodeForm((f) => ({ ...f, role: e.target.value as 'ENTRAINEUR' | 'JOUEUR' }))}>
-          <option value="JOUEUR">{ROLE_LABELS.JOUEUR}</option>
-          <option value="ENTRAINEUR">{ROLE_LABELS.ENTRAINEUR}</option>
+          <option value="JOUEUR">{t('roles.JOUEUR')}</option>
+          <option value="ENTRAINEUR">{t('roles.ENTRAINEUR')}</option>
         </Select>
-        <Select label="Durée de validité" value={String(codeForm.expiresInHours)}
+        <Select label={t('members.codeDuration')} value={String(codeForm.expiresInHours)}
           onChange={(e) => setCodeForm((f) => ({ ...f, expiresInHours: Number(e.target.value) }))}>
-          <option value="1">1 heure</option>
-          <option value="4">4 heures</option>
-          <option value="12">12 heures</option>
-          <option value="24">24 heures</option>
-          <option value="48">2 jours</option>
-          <option value="168">7 jours</option>
+          <option value="1">{t('members.hours1')}</option>
+          <option value="4">{t('members.hours4')}</option>
+          <option value="12">{t('members.hours12')}</option>
+          <option value="24">{t('members.hours24')}</option>
+          <option value="48">{t('members.days2')}</option>
+          <option value="168">{t('members.days7')}</option>
         </Select>
         {formError && <p className="text-xs text-red-400 mb-3">{formError}</p>}
         <div className="flex gap-3 mt-2">
-          <Button variant="secondary" full onClick={() => setShowCodeModal(false)}>Annuler</Button>
-          <Button full onClick={handleCreateCode} loading={saving}>Générer le code</Button>
+          <Button variant="secondary" full onClick={() => setShowCodeModal(false)}>{t('common.cancel')}</Button>
+          <Button full onClick={handleCreateCode} loading={saving}>{t('members.generateCode')}</Button>
         </div>
       </Modal>
     </AppLayout>

@@ -3,15 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Calendar, Activity, AlertCircle, Link2, Loader2 } from 'lucide-react';
 import { getInvitation, register } from '@/api/auth';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import AuthLayout from '@/layouts/AuthLayout';
-import { ROLE_LABELS, type Role } from '@/types';
+import type { Role } from '@/types';
 
 export default function RegisterPage() {
   const { token } = useParams<{ token?: string }>();
   const navigate = useNavigate();
   const { login: setAuth } = useAuth();
+  const { t } = useI18n();
 
   const [invitData, setInvitData] = useState<{
     email?: string;
@@ -44,7 +46,7 @@ export default function RegisterPage() {
       .catch((err) => {
         setInvitError(
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-            "Lien d'invitation invalide ou expiré."
+            t('auth.invalidLinkDesc')
         );
       })
       .finally(() => setLoadingInvit(false));
@@ -54,11 +56,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setFormError('');
     if (password !== confirmPassword) {
-      setFormError('Les mots de passe ne correspondent pas.');
+      setFormError(t('auth.passwordMismatch'));
       return;
     }
     if (password.length < 8) {
-      setFormError('Le mot de passe doit faire au moins 8 caractères.');
+      setFormError(t('auth.passwordTooShort'));
       return;
     }
 
@@ -80,7 +82,7 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       setFormError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la création du compte.'
+          t('auth.registerError')
       );
     } finally {
       setLoading(false);
@@ -92,7 +94,7 @@ export default function RegisterPage() {
       <AuthLayout>
         <div className="flex flex-col items-center justify-center gap-3 py-20">
           <Loader2 className="animate-spin text-violet-400" size={28} />
-          <p className="text-sm text-slate-500 dark:text-slate-400">Vérification du lien…</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('auth.verifying')}</p>
         </div>
       </AuthLayout>
     );
@@ -105,10 +107,10 @@ export default function RegisterPage() {
           <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25 flex items-center justify-center mx-auto mb-4">
             <Link2 size={22} className="text-red-500 dark:text-red-400" />
           </div>
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Lien invalide</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">{t('auth.invalidLink')}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{invitError}</p>
           <Button onClick={() => navigate('/login')} variant="secondary" full>
-            Aller à la connexion
+            {t('auth.goToLogin')}
           </Button>
         </div>
       </AuthLayout>
@@ -128,19 +130,19 @@ export default function RegisterPage() {
         <div className="mb-6">
           <div className="inline-flex items-center gap-1.5 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20 rounded-full px-3 py-1 mb-4">
             <Link2 size={12} className="text-violet-500 dark:text-violet-400" />
-            <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Invitation reçue</span>
+            <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">{t('auth.invitation')}</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">Créer mon compte</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">{t('auth.registerTitle')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {invitData?.clubNom && (
               <>
-                Club : <span className="text-slate-700 dark:text-slate-200 font-semibold">{invitData.clubNom}</span>
+                {t('auth.club')} : <span className="text-slate-700 dark:text-slate-200 font-semibold">{invitData.clubNom}</span>
                 {' — '}
               </>
             )}
-            Rôle :{' '}
+            {t('auth.role')} :{' '}
             <span className="text-violet-600 dark:text-violet-300 font-semibold">
-              {ROLE_LABELS[(invitData?.role as Role) ?? 'JOUEUR']}
+              {t(`roles.${(invitData?.role as Role) ?? 'JOUEUR'}`)}
             </span>
           </p>
         </div>
@@ -148,7 +150,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Prénom"
+              label={t('createClub.firstName')}
               icon={<User size={14} />}
               placeholder="Jean"
               value={firstName}
@@ -156,7 +158,7 @@ export default function RegisterPage() {
               required
             />
             <Input
-              label="Nom"
+              label={t('createClub.lastName')}
               icon={<User size={14} />}
               placeholder="Dupont"
               value={lastName}
@@ -166,7 +168,7 @@ export default function RegisterPage() {
           </div>
 
           <Input
-            label="Email"
+            label={t('auth.email')}
             icon={<Mail size={15} />}
             type="email"
             placeholder="votre@email.com"
@@ -178,17 +180,17 @@ export default function RegisterPage() {
           />
 
           <Input
-            label="Mot de passe"
+            label={t('auth.password')}
             icon={<Lock size={15} />}
             type="password"
-            placeholder="Minimum 8 caractères"
+            placeholder={t('auth.passwordMin')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="new-password"
           />
           <Input
-            label="Confirmer le mot de passe"
+            label={t('auth.confirmPassword')}
             icon={<Lock size={15} />}
             type="password"
             placeholder="••••••••"
@@ -198,7 +200,7 @@ export default function RegisterPage() {
             autoComplete="new-password"
           />
           <Input
-            label="Date de naissance (optionnel)"
+            label={t('auth.birthDateOptional')}
             icon={<Calendar size={15} />}
             type="date"
             value={birthDate}
@@ -213,17 +215,17 @@ export default function RegisterPage() {
           )}
 
           <Button type="submit" full size="lg" loading={loading}>
-            Créer mon compte
+            {t('auth.registerTitle')}
           </Button>
         </form>
 
         <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/40 text-center text-sm text-slate-500">
-          Déjà un compte ?{' '}
+          {t('auth.alreadyAccount')}{' '}
           <button
             onClick={() => navigate('/login')}
             className="text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 font-semibold transition-colors"
           >
-            Se connecter
+            {t('auth.loginBtn')}
           </button>
         </div>
       </div>

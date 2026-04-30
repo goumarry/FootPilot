@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Newspaper, Plus, Trash2, User } from 'lucide-react';
 import { getActualites, createActualite, deleteActualite } from '@/api/actualites';
 import type { Actualite } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -9,18 +10,19 @@ import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
 import { useAuth } from '@/contexts/AuthContext';
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const min = Math.floor(diff / 60000);
-  if (min < 60) return `il y a ${min} min`;
+  if (min < 60) return t('news.timeAgoMin').replace('{n}', String(min));
   const h = Math.floor(min / 60);
-  if (h < 24) return `il y a ${h}h`;
+  if (h < 24) return t('news.timeAgoHour').replace('{n}', String(h));
   const d = Math.floor(h / 24);
-  return `il y a ${d} jour${d > 1 ? 's' : ''}`;
+  return (d === 1 ? t('news.timeAgoDay') : t('news.timeAgoDays')).replace('{n}', String(d));
 }
 
 export default function ActualitesPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [actualites, setActualites] = useState<Actualite[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -43,7 +45,7 @@ export default function ActualitesPage() {
 
   async function handleCreate() {
     if (!form.titre.trim() || !form.contenu.trim()) {
-      setError('Titre et contenu sont requis.');
+      setError(t('news.required'));
       return;
     }
     setSaving(true);
@@ -56,7 +58,7 @@ export default function ActualitesPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la publication.'
+          t('news.publishError')
       );
     } finally {
       setSaving(false);
@@ -64,7 +66,7 @@ export default function ActualitesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer cette actualité ?')) return;
+    if (!confirm(t('news.deleteConfirm'))) return;
     await deleteActualite(id);
     setActualites((prev) => prev.filter((a) => a.id !== id));
   }
@@ -76,28 +78,28 @@ export default function ActualitesPage() {
       <div className="p-6 max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Communication</p>
-            <h1 className="text-2xl font-extrabold text-slate-50">Actualités</h1>
+            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('news.subtitle')}</p>
+            <h1 className="text-2xl font-extrabold text-slate-50">{t('news.title')}</h1>
           </div>
           {canPublish && (
             <Button onClick={() => setShowModal(true)}>
               <Plus size={15} />
-              <span>Publier</span>
+              <span>{t('common.publish')}</span>
             </Button>
           )}
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : actualites.length === 0 ? (
           <EmptyState
             icon={<Newspaper size={22} />}
-            title="Aucune actualité"
-            description="Publiez des informations pour tous les membres du club."
+            title={t('news.noNews')}
+            description={t('news.noNewsDesc')}
             action={
               canPublish ? (
                 <Button onClick={() => setShowModal(true)} variant="secondary">
-                  <Plus size={15} /> Première publication
+                  <Plus size={15} /> {t('news.firstPost')}
                 </Button>
               ) : undefined
             }
@@ -132,10 +134,10 @@ export default function ActualitesPage() {
                   <span className="text-xs text-slate-500">
                     {actu.auteur
                       ? `${actu.auteur.firstName} ${actu.auteur.lastName}`
-                      : 'Auteur inconnu'}
+                      : t('news.unknownAuthor')}
                   </span>
                   <span className="text-slate-700">·</span>
-                  <span className="text-xs text-slate-600">{timeAgo(actu.createdAt)}</span>
+                  <span className="text-xs text-slate-600">{timeAgo(actu.createdAt, t)}</span>
                   {actu.equipe && (
                     <>
                       <span className="text-slate-700">·</span>
@@ -146,7 +148,6 @@ export default function ActualitesPage() {
               </div>
             ))}
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-2 pt-4">
                 <Button
@@ -155,7 +156,7 @@ export default function ActualitesPage() {
                   onClick={() => load(page - 1)}
                   disabled={page <= 1}
                 >
-                  Précédent
+                  {t('common.previous')}
                 </Button>
                 <span className="flex items-center text-xs text-slate-500 px-2">
                   {page} / {totalPages}
@@ -166,7 +167,7 @@ export default function ActualitesPage() {
                   onClick={() => load(page + 1)}
                   disabled={page >= totalPages}
                 >
-                  Suivant
+                  {t('common.next')}
                 </Button>
               </div>
             )}
@@ -174,32 +175,32 @@ export default function ActualitesPage() {
         )}
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Nouvelle actualité">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={t('news.modalTitle')}>
         <Input
-          label="Titre"
-          placeholder="Ex : Résultats du week-end, Convocation…"
+          label={t('news.titleLabel')}
+          placeholder={t('news.titlePlaceholder')}
           value={form.titre}
           onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
         />
         <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-400 mb-1.5 tracking-wide uppercase">
-            Contenu
+            {t('news.contentLabel')}
           </label>
           <textarea
             className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl py-2.5 px-4 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40 resize-none"
             rows={5}
-            placeholder="Contenu de votre actualité…"
+            placeholder={t('news.contentPlaceholder')}
             value={form.contenu}
             onChange={(e) => setForm((f) => ({ ...f, contenu: e.target.value }))}
           />
         </div>
         {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
         <p className="text-xs text-slate-500 mb-4">
-          Une notification email sera envoyée à tous les membres du club.
+          {t('news.emailNotice')}
         </p>
         <div className="flex gap-3">
-          <Button variant="secondary" full onClick={() => setShowModal(false)}>Annuler</Button>
-          <Button full onClick={handleCreate} loading={saving}>Publier</Button>
+          <Button variant="secondary" full onClick={() => setShowModal(false)}>{t('common.cancel')}</Button>
+          <Button full onClick={handleCreate} loading={saving}>{t('common.publish')}</Button>
         </div>
       </Modal>
     </AppLayout>

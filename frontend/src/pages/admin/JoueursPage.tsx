@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { getJoueurs, createJoueur, updateJoueur, deleteJoueur } from '@/api/joueurs';
 import type { Joueur, Poste } from '@/types';
-import { POSTE_LABELS } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -14,6 +14,7 @@ import Badge from '@/components/ui/Badge';
 const POSTES: Poste[] = ['GB', 'DEF', 'MIL', 'ATT'];
 
 export default function JoueursPage() {
+  const { t } = useI18n();
   const [joueurs, setJoueurs] = useState<Joueur[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -59,7 +60,7 @@ export default function JoueursPage() {
 
   async function handleSave() {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.birthDate) {
-      setError('Prénom, nom et date de naissance sont requis.');
+      setError(t('players.required'));
       return;
     }
     setSaving(true);
@@ -83,7 +84,7 @@ export default function JoueursPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la sauvegarde.'
+          t('players.createError')
       );
     } finally {
       setSaving(false);
@@ -91,7 +92,7 @@ export default function JoueursPage() {
   }
 
   async function handleDelete(j: Joueur) {
-    if (!confirm(`Supprimer ${j.firstName} ${j.lastName} ?`)) return;
+    if (!confirm(t('players.deleteConfirm').replace('{name}', `${j.firstName} ${j.lastName}`))) return;
     await deleteJoueur(j.id);
     setJoueurs((prev) => prev.filter((jj) => jj.id !== j.id));
   }
@@ -113,21 +114,20 @@ export default function JoueursPage() {
       <div className="p-6 max-w-4xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Gestion</p>
-            <h1 className="text-2xl font-extrabold text-slate-50">Joueurs</h1>
+            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('players.subtitle')}</p>
+            <h1 className="text-2xl font-extrabold text-slate-50">{t('players.title')}</h1>
           </div>
           <Button onClick={openCreate}>
             <Plus size={15} />
-            <span>Ajouter</span>
+            <span>{t('common.add')}</span>
           </Button>
         </div>
 
-        {/* Recherche */}
         <div className="relative mb-5">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             type="text"
-            placeholder="Rechercher un joueur…"
+            placeholder={t('players.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
@@ -135,16 +135,16 @@ export default function JoueursPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<User size={22} />}
-            title={search ? 'Aucun résultat' : 'Aucun joueur'}
-            description={search ? undefined : 'Ajoutez vos joueurs manuellement ou via invitation.'}
+            title={search ? t('common.noResults') : t('players.noPlayers')}
+            description={search ? undefined : t('players.noPlayersDesc')}
             action={
               !search ? (
                 <Button onClick={openCreate} variant="secondary">
-                  <Plus size={15} /> Ajouter un joueur
+                  <Plus size={15} /> {t('players.addPlayer')}
                 </Button>
               ) : undefined
             }
@@ -164,7 +164,7 @@ export default function JoueursPage() {
                     {j.firstName} {j.lastName}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(j.birthDate).toLocaleDateString('fr-FR')}
+                    {new Date(j.birthDate).toLocaleDateString()}
                     {j.equipes && j.equipes.length > 0 && (
                       <> · {j.equipes.map((e) => e.equipe.nomEquipe).join(', ')}</>
                     )}
@@ -172,7 +172,7 @@ export default function JoueursPage() {
                 </div>
                 {j.poste && (
                   <Badge variant={posteColors[j.poste]}>
-                    {POSTE_LABELS[j.poste]}
+                    {t(`postes.${j.poste}`)}
                   </Badge>
                 )}
                 <button
@@ -196,41 +196,41 @@ export default function JoueursPage() {
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={editing ? 'Modifier le joueur' : 'Nouveau joueur'}
+        title={editing ? t('players.editTitle') : t('players.createTitle')}
       >
         <div className="grid grid-cols-2 gap-3">
           <Input
-            label="Prénom"
+            label={t('players.firstName')}
             value={form.firstName}
             onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
             placeholder="Jean"
           />
           <Input
-            label="Nom"
+            label={t('players.lastName')}
             value={form.lastName}
             onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
             placeholder="Dupont"
           />
         </div>
         <Input
-          label="Date de naissance"
+          label={t('players.birthDate')}
           type="date"
           value={form.birthDate}
           onChange={(e) => setForm((f) => ({ ...f, birthDate: e.target.value }))}
         />
         <div className="grid grid-cols-2 gap-3">
           <Select
-            label="Poste (optionnel)"
+            label={t('players.positionOptional')}
             value={form.poste}
             onChange={(e) => setForm((f) => ({ ...f, poste: e.target.value as Poste | '' }))}
           >
-            <option value="">— Non défini —</option>
+            <option value="">{t('players.positionUndefined')}</option>
             {POSTES.map((p) => (
-              <option key={p} value={p}>{POSTE_LABELS[p]}</option>
+              <option key={p} value={p}>{t(`postes.${p}`)}</option>
             ))}
           </Select>
           <Input
-            label="N° maillot (optionnel)"
+            label={t('players.jerseyOptional')}
             type="number"
             min={1}
             max={99}
@@ -241,9 +241,9 @@ export default function JoueursPage() {
         </div>
         {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
         <div className="flex gap-3 mt-2">
-          <Button variant="secondary" full onClick={() => setShowModal(false)}>Annuler</Button>
+          <Button variant="secondary" full onClick={() => setShowModal(false)}>{t('common.cancel')}</Button>
           <Button full onClick={handleSave} loading={saving}>
-            {editing ? 'Modifier' : 'Créer'}
+            {editing ? t('common.edit') : t('common.create')}
           </Button>
         </div>
       </Modal>

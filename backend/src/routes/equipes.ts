@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
     where,
     include: {
       categorie: { select: { id: true, nom: true } },
-      _count: { select: { joueurs: true, entraineurs: true } },
+      _count: { select: { joueurs: { where: { dateFin: null } }, entraineurs: true } },
     },
     orderBy: [{ categorie: { nom: 'asc' } }, { nomEquipe: 'asc' }],
   });

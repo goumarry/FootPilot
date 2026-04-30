@@ -4,6 +4,7 @@ import { Shield, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { getEquipes, createEquipe, updateEquipe, deleteEquipe } from '@/api/equipes';
 import { getCategories } from '@/api/categories';
 import type { Equipe, Categorie } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -13,6 +14,7 @@ import EmptyState from '@/components/ui/EmptyState';
 
 export default function EquipesPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function EquipesPage() {
 
   async function handleSave() {
     if (!form.nomEquipe.trim() || !form.categorieId) {
-      setError('Nom et catégorie sont requis.');
+      setError(t('teams.nameRequired'));
       return;
     }
     setSaving(true);
@@ -72,7 +74,7 @@ export default function EquipesPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la sauvegarde.'
+          t('common.saveError')
       );
     } finally {
       setSaving(false);
@@ -80,14 +82,14 @@ export default function EquipesPage() {
   }
 
   async function handleDelete(eq: Equipe) {
-    if (!confirm(`Supprimer "${eq.nomEquipe}" ?`)) return;
+    if (!confirm(t('teams.deleteConfirm').replace('{name}', eq.nomEquipe))) return;
     try {
       await deleteEquipe(eq.id);
       setEquipes((prev) => prev.filter((e) => e.id !== eq.id));
     } catch (err: unknown) {
       alert(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Impossible de supprimer cette équipe.'
+          t('teams.deleteError')
       );
     }
   }
@@ -102,32 +104,32 @@ export default function EquipesPage() {
       <div className="p-6 max-w-3xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Gestion</p>
-            <h1 className="text-2xl font-extrabold text-slate-50">Équipes</h1>
+            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('teams.subtitle')}</p>
+            <h1 className="text-2xl font-extrabold text-slate-50">{t('teams.title')}</h1>
           </div>
           <Button onClick={openCreate} disabled={categories.length === 0}>
             <Plus size={15} />
-            <span>Nouvelle équipe</span>
+            <span>{t('teams.newTeam')}</span>
           </Button>
         </div>
 
         {categories.length === 0 && !loading && (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6 text-sm text-amber-300">
-            Créez d'abord des catégories avant d'ajouter des équipes.
+            {t('teams.noCategoriesWarning')}
           </div>
         )}
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : equipes.length === 0 ? (
           <EmptyState
             icon={<Shield size={22} />}
-            title="Aucune équipe"
-            description="Créez vos équipes et assignez-leur des joueurs et entraîneurs."
+            title={t('teams.noTeams')}
+            description={t('teams.noTeamsDesc')}
             action={
               categories.length > 0 ? (
                 <Button onClick={openCreate} variant="secondary">
-                  <Plus size={15} /> Créer une équipe
+                  <Plus size={15} /> {t('teams.createTeam')}
                 </Button>
               ) : undefined
             }
@@ -150,8 +152,10 @@ export default function EquipesPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-200">{eq.nomEquipe}</p>
                         <p className="text-xs text-slate-500">
-                          {eq.niveauChampionnat ?? 'Niveau non renseigné'}
-                          {eq._count && ` · ${eq._count.joueurs} joueur${eq._count.joueurs !== 1 ? 's' : ''}`}
+                          {eq.niveauChampionnat ?? t('teams.levelUnset')}
+                          {eq._count && ` · ${eq._count.joueurs === 1
+                            ? t('teams.playerCount').replace('{n}', String(eq._count.joueurs))
+                            : t('teams.playerCountPlural').replace('{n}', String(eq._count.joueurs))}`}
                         </p>
                       </div>
                       <button
@@ -179,10 +183,10 @@ export default function EquipesPage() {
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={editing ? 'Modifier l\'équipe' : 'Nouvelle équipe'}
+        title={editing ? t('teams.editTitle') : t('teams.createTitle')}
       >
         <Select
-          label="Catégorie"
+          label={t('teams.categoryLabel')}
           value={form.categorieId}
           onChange={(e) => setForm((f) => ({ ...f, categorieId: e.target.value }))}
         >
@@ -191,22 +195,22 @@ export default function EquipesPage() {
           ))}
         </Select>
         <Input
-          label="Nom de l'équipe"
-          placeholder="Ex : Équipe A, U17 B…"
+          label={t('teams.nameLabel')}
+          placeholder={t('teams.namePlaceholder')}
           value={form.nomEquipe}
           onChange={(e) => setForm((f) => ({ ...f, nomEquipe: e.target.value }))}
         />
         <Input
-          label="Niveau de championnat (optionnel)"
-          placeholder="Ex : Régional 1, Départemental 2…"
+          label={t('teams.levelLabel')}
+          placeholder={t('teams.levelPlaceholder')}
           value={form.niveauChampionnat}
           onChange={(e) => setForm((f) => ({ ...f, niveauChampionnat: e.target.value }))}
         />
         {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
         <div className="flex gap-3 mt-2">
-          <Button variant="secondary" full onClick={() => setShowModal(false)}>Annuler</Button>
+          <Button variant="secondary" full onClick={() => setShowModal(false)}>{t('common.cancel')}</Button>
           <Button full onClick={handleSave} loading={saving}>
-            {editing ? 'Modifier' : 'Créer'}
+            {editing ? t('common.edit') : t('common.create')}
           </Button>
         </div>
       </Modal>

@@ -2,12 +2,14 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ArrowRight, Mail, Lock, User, MapPin, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { createClub } from '@/api/auth';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
 export default function CreateClubPage() {
   const { login: setAuth } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -31,11 +33,11 @@ export default function CreateClubPage() {
     setError('');
 
     if (form.password !== form.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(t('createClub.passwordMismatch'));
       return;
     }
     if (form.password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
+      setError(t('createClub.passwordTooShort'));
       return;
     }
 
@@ -54,7 +56,7 @@ export default function CreateClubPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Une erreur est survenue.'
+          t('createClub.error')
       );
     } finally {
       setLoading(false);
@@ -63,14 +65,12 @@ export default function CreateClubPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Ambient */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-700/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 w-full max-w-2xl">
-        {/* Logo */}
         <div className="flex items-center gap-2.5 mb-8">
           <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
             <Activity size={18} className="text-violet-400" />
@@ -80,22 +80,21 @@ export default function CreateClubPage() {
 
         <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm shadow-sm">
           <div className="mb-7">
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">Créer mon club</h1>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 tracking-tight">{t('createClub.title')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Votre compte sera le compte administrateur du club. Vous pourrez ensuite inviter des entraîneurs et des joueurs.
+              {t('createClub.desc')}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-0">
-            {/* Section club */}
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-4">
                 <Shield size={14} className="text-violet-400" />
-                <span className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider">Informations du club</span>
+                <span className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider">{t('createClub.clubInfo')}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4">
                 <Input
-                  label="Nom du club"
+                  label={t('createClub.clubName')}
                   icon={<Shield size={15} />}
                   placeholder="AS Lyon FC"
                   value={form.clubNom}
@@ -104,7 +103,7 @@ export default function CreateClubPage() {
                   minLength={2}
                 />
                 <Input
-                  label="Ville"
+                  label={t('createClub.city')}
                   icon={<MapPin size={15} />}
                   placeholder="Lyon"
                   value={form.clubVille}
@@ -115,15 +114,14 @@ export default function CreateClubPage() {
               </div>
             </div>
 
-            {/* Section compte */}
             <div className="border-t border-slate-100 dark:border-slate-700/40 pt-5 mb-5">
               <div className="flex items-center gap-2 mb-4">
                 <User size={14} className="text-violet-400" />
-                <span className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider">Votre compte gestionnaire</span>
+                <span className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wider">{t('createClub.accountInfo')}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4">
                 <Input
-                  label="Prénom"
+                  label={t('createClub.firstName')}
                   icon={<User size={15} />}
                   placeholder="Marc"
                   value={form.firstName}
@@ -131,7 +129,7 @@ export default function CreateClubPage() {
                   required
                 />
                 <Input
-                  label="Nom"
+                  label={t('createClub.lastName')}
                   icon={<User size={15} />}
                   placeholder="Dupont"
                   value={form.lastName}
@@ -140,7 +138,7 @@ export default function CreateClubPage() {
                 />
               </div>
               <Input
-                label="Email"
+                label={t('createClub.email')}
                 icon={<Mail size={15} />}
                 type="email"
                 placeholder="vous@votreclub.fr"
@@ -151,10 +149,10 @@ export default function CreateClubPage() {
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 sm:gap-4">
                 <Input
-                  label="Mot de passe"
+                  label={t('createClub.password')}
                   icon={<Lock size={15} />}
                   type="password"
-                  placeholder="Min. 8 caractères"
+                  placeholder={t('createClub.passwordMin')}
                   value={form.password}
                   onChange={(e) => set('password', e.target.value)}
                   required
@@ -162,10 +160,10 @@ export default function CreateClubPage() {
                   autoComplete="new-password"
                 />
                 <Input
-                  label="Confirmer"
+                  label={t('createClub.confirm')}
                   icon={<Lock size={15} />}
                   type="password"
-                  placeholder="Répétez le mot de passe"
+                  placeholder={t('createClub.confirmPlaceholder')}
                   value={form.confirmPassword}
                   onChange={(e) => set('confirmPassword', e.target.value)}
                   required
@@ -182,7 +180,7 @@ export default function CreateClubPage() {
             )}
 
             <Button type="submit" full size="lg" loading={loading}>
-              <span>Créer mon club et mon compte</span>
+              <span>{t('createClub.submit')}</span>
               <ArrowRight size={16} />
             </Button>
           </form>
@@ -192,7 +190,7 @@ export default function CreateClubPage() {
           onClick={() => navigate('/')}
           className="mt-4 w-full text-center text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
         >
-          ← Retour à l'accueil
+          {t('common.backHome')}
         </button>
       </div>
     </div>

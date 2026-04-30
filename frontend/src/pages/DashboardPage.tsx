@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Newspaper, Trophy, Shield, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { getEvenements } from '@/api/evenements';
 import { getActualites } from '@/api/actualites';
 import type { Evenement, Actualite } from '@/types';
@@ -9,13 +10,14 @@ import AppLayout from '@/layouts/AppLayout';
 import Badge from '@/components/ui/Badge';
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('fr-FR', {
+  return new Date(d).toLocaleDateString(undefined, {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   });
 }
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [actualites, setActualites] = useState<Actualite[]>([]);
@@ -34,35 +36,33 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="p-6 max-w-4xl">
-        {/* Header */}
         <div className="mb-8">
-          <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Bienvenue</p>
+          <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('dashboard.subtitle')}</p>
           <h1 className="text-2xl font-extrabold text-slate-50">
             {user?.firstName} {user?.lastName}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            {user?.role === 'ENTRAINEUR' ? 'Espace entraîneur' : 'Espace joueur'}
+            {user?.role === 'ENTRAINEUR' ? t('dashboard.coachSpace') : t('dashboard.playerSpace')}
           </p>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : (
           <div className="space-y-8">
-            {/* Prochains événements */}
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-slate-300">Prochains événements</h2>
+                <h2 className="text-sm font-bold text-slate-300">{t('dashboard.upcoming')}</h2>
                 <button
                   onClick={() => navigate('/dashboard/planning')}
                   className="text-xs text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1"
                 >
-                  Voir tout <ArrowRight size={12} />
+                  {t('dashboard.seeAll')} <ArrowRight size={12} />
                 </button>
               </div>
               {evenements.length === 0 ? (
                 <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center text-sm text-slate-500">
-                  Aucun événement à venir
+                  {t('dashboard.noUpcoming')}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -81,7 +81,7 @@ export default function DashboardPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <Badge variant={ev.type === 'MATCH' ? 'violet' : 'green'}>
-                            {ev.type === 'MATCH' ? 'Match' : 'Entraînement'}
+                            {ev.type === 'MATCH' ? t('planning.match') : t('planning.training')}
                           </Badge>
                           {ev.equipe && (
                             <span className="text-xs text-slate-500">{ev.equipe.nomEquipe}</span>
@@ -96,20 +96,19 @@ export default function DashboardPage() {
               )}
             </section>
 
-            {/* Dernières actualités */}
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-slate-300">Actualités</h2>
+                <h2 className="text-sm font-bold text-slate-300">{t('dashboard.news')}</h2>
                 <button
                   onClick={() => navigate('/dashboard/actualites')}
                   className="text-xs text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1"
                 >
-                  Voir tout <ArrowRight size={12} />
+                  {t('dashboard.seeAll')} <ArrowRight size={12} />
                 </button>
               </div>
               {actualites.length === 0 ? (
                 <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center text-sm text-slate-500">
-                  Aucune actualité
+                  {t('dashboard.noNews')}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -121,7 +120,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <Newspaper size={13} className="text-violet-400" />
                         <span className="text-xs text-slate-500">
-                          {new Date(actu.createdAt).toLocaleDateString('fr-FR')}
+                          {new Date(actu.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-slate-200">{actu.titre}</p>
@@ -142,8 +141,8 @@ export default function DashboardPage() {
                     <Trophy size={16} className="text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-200">Mes statistiques</p>
-                    <p className="text-xs text-slate-500">Buts, passes, assiduité…</p>
+                    <p className="text-sm font-semibold text-slate-200">{t('dashboard.myStats')}</p>
+                    <p className="text-xs text-slate-500">{t('dashboard.statDesc')}</p>
                   </div>
                   <ArrowRight size={14} className="text-slate-600 group-hover:text-violet-400 ml-auto transition-colors" />
                 </button>

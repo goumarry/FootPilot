@@ -5,14 +5,15 @@ import { getEquipe, assignJoueur, removeJoueur, assignEntraineur, removeEntraine
 import { getJoueurs } from '@/api/joueurs';
 import { getEntraineurs } from '@/api/entraineurs';
 import type { EquipeDetail, Joueur, Entraineur } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import { POSTE_LABELS } from '@/types';
 
 export default function EquipeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [equipe, setEquipe] = useState<EquipeDetail | null>(null);
   const [allJoueurs, setAllJoueurs] = useState<Joueur[]>([]);
@@ -105,7 +106,7 @@ export default function EquipeDetailPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="p-6 text-center py-16 text-slate-500 text-sm">Chargement…</div>
+        <div className="p-6 text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
       </AppLayout>
     );
   }
@@ -113,7 +114,7 @@ export default function EquipeDetailPage() {
   if (!equipe) {
     return (
       <AppLayout>
-        <div className="p-6 text-center py-16 text-slate-500 text-sm">Équipe introuvable.</div>
+        <div className="p-6 text-center py-16 text-slate-500 text-sm">{t('teams.notFound')}</div>
       </AppLayout>
     );
   }
@@ -121,13 +122,12 @@ export default function EquipeDetailPage() {
   return (
     <AppLayout>
       <div className="p-6 max-w-3xl">
-        {/* Header */}
         <button
           onClick={() => navigate('/admin/equipes')}
           className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors mb-5"
         >
           <ArrowLeft size={15} />
-          Équipes
+          {t('teams.backToTeams')}
         </button>
 
         <div className="flex items-center gap-3 mb-8">
@@ -142,21 +142,21 @@ export default function EquipeDetailPage() {
           </div>
         </div>
 
-        {/* Joueurs */}
+        {/* Players */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-              Joueurs ({equipe.joueurs.length})
+              {t('teams.players')} ({equipe.joueurs.length})
             </h2>
             <Button size="sm" variant="secondary" onClick={() => setShowJoueurModal(true)}>
               <UserPlus size={13} />
-              Ajouter
+              {t('common.add')}
             </Button>
           </div>
 
           {equipe.joueurs.length === 0 ? (
             <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl px-4 py-6 text-center text-sm text-slate-500">
-              Aucun joueur dans cette équipe
+              {t('teams.noPlayersInTeam')}
             </div>
           ) : (
             <div className="space-y-2">
@@ -174,7 +174,7 @@ export default function EquipeDetailPage() {
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       {joueur.poste && (
-                        <span className="text-xs text-slate-500">{POSTE_LABELS[joueur.poste]}</span>
+                        <span className="text-xs text-slate-500">{t(`postes.${joueur.poste}`)}</span>
                       )}
                       {joueur.numeroMaillot && (
                         <span className="text-xs text-slate-600">#{joueur.numeroMaillot}</span>
@@ -194,21 +194,21 @@ export default function EquipeDetailPage() {
           )}
         </section>
 
-        {/* Entraîneurs */}
+        {/* Coaches */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-              Entraîneurs ({equipe.entraineurs.length})
+              {t('teams.coaches')} ({equipe.entraineurs.length})
             </h2>
             <Button size="sm" variant="secondary" onClick={() => setShowEntraineurModal(true)}>
               <UserPlus size={13} />
-              Ajouter
+              {t('common.add')}
             </Button>
           </div>
 
           {equipe.entraineurs.length === 0 ? (
             <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl px-4 py-6 text-center text-sm text-slate-500">
-              Aucun entraîneur dans cette équipe
+              {t('teams.noCoachesInTeam')}
             </div>
           ) : (
             <div className="space-y-2">
@@ -239,15 +239,14 @@ export default function EquipeDetailPage() {
         </section>
       </div>
 
-      {/* Modal ajout joueur */}
       <Modal
         open={showJoueurModal}
         onClose={() => setShowJoueurModal(false)}
-        title="Ajouter un joueur"
+        title={t('teams.addPlayerModal')}
       >
         {availableJoueurs.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">
-            Tous les joueurs du club sont déjà dans cette équipe.
+            {t('teams.allPlayersInTeam')}
           </p>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto -mx-1 px-1">
@@ -269,10 +268,10 @@ export default function EquipeDetailPage() {
                     </p>
                     {currentTeam ? (
                       <p className="text-xs text-amber-400/80 mt-0.5">
-                        Actuellement dans {currentTeam.nomEquipe} — sera déplacé
+                        {t('teams.movedFrom').replace('{team}', currentTeam.nomEquipe)}
                       </p>
                     ) : joueur.poste ? (
-                      <p className="text-xs text-slate-500 mt-0.5">{POSTE_LABELS[joueur.poste]}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{t(`postes.${joueur.poste}`)}</p>
                     ) : null}
                   </div>
                   {assigning === joueur.id && (
@@ -285,20 +284,19 @@ export default function EquipeDetailPage() {
         )}
         <div className="mt-4">
           <Button variant="secondary" full onClick={() => setShowJoueurModal(false)}>
-            Annuler
+            {t('common.cancel')}
           </Button>
         </div>
       </Modal>
 
-      {/* Modal ajout entraîneur */}
       <Modal
         open={showEntraineurModal}
         onClose={() => setShowEntraineurModal(false)}
-        title="Ajouter un entraîneur"
+        title={t('teams.addCoachModal')}
       >
         {availableEntraineurs.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-4">
-            Tous les entraîneurs du club sont déjà dans cette équipe.
+            {t('teams.allCoachesInTeam')}
           </p>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto -mx-1 px-1">
@@ -320,7 +318,7 @@ export default function EquipeDetailPage() {
                     </p>
                     {teams.length > 0 && (
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {teams.map((t) => t.equipe.nomEquipe).join(', ')}
+                        {teams.map((tt) => tt.equipe.nomEquipe).join(', ')}
                       </p>
                     )}
                   </div>
@@ -334,7 +332,7 @@ export default function EquipeDetailPage() {
         )}
         <div className="mt-4">
           <Button variant="secondary" full onClick={() => setShowEntraineurModal(false)}>
-            Annuler
+            {t('common.cancel')}
           </Button>
         </div>
       </Modal>

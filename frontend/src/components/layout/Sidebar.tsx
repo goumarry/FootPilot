@@ -6,43 +6,45 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { clsx } from '@/lib/clsx';
-import { ROLE_LABELS } from '@/types';
 import { useClubLogo } from '@/hooks/useClubLogo';
+import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 
 interface NavItem {
   to: string;
   icon: React.ElementType;
-  label: string;
+  labelKey: string;
   end?: boolean;
 }
 
 const coachItems: NavItem[] = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-  { to: '/admin/membres', icon: Users, label: 'Membres & invitations' },
-  { to: '/admin/categories', icon: FolderOpen, label: 'Catégories' },
-  { to: '/admin/equipes', icon: Shield, label: 'Équipes' },
-  { to: '/admin/joueurs', icon: Users, label: 'Joueurs' },
-  { to: '/admin/planning', icon: Calendar, label: 'Planning' },
-  { to: '/admin/actualites', icon: Newspaper, label: 'Actualités' },
+  { to: '/admin', icon: LayoutDashboard, labelKey: 'nav.dashboard', end: true },
+  { to: '/admin/membres', icon: Users, labelKey: 'nav.members' },
+  { to: '/admin/categories', icon: FolderOpen, labelKey: 'nav.categories' },
+  { to: '/admin/equipes', icon: Shield, labelKey: 'nav.teams' },
+  { to: '/admin/joueurs', icon: Users, labelKey: 'nav.players' },
+  { to: '/admin/planning', icon: Calendar, labelKey: 'nav.planning' },
+  { to: '/admin/actualites', icon: Newspaper, labelKey: 'nav.news' },
 ];
 
 const gestionnaireItems: NavItem[] = [
   ...coachItems,
-  { to: '/admin/club', icon: Settings, label: 'Paramètres du club' },
+  { to: '/admin/club', icon: Settings, labelKey: 'nav.clubSettings' },
 ];
 
 const joueurItems: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord', end: true },
-  { to: '/dashboard/planning', icon: Calendar, label: 'Mon planning' },
-  { to: '/dashboard/actualites', icon: Newspaper, label: 'Actualités' },
-  { to: '/dashboard/stats', icon: Trophy, label: 'Mes statistiques' },
-  { to: '/dashboard/profil', icon: User, label: 'Mon profil' },
+  { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', end: true },
+  { to: '/dashboard/planning', icon: Calendar, labelKey: 'nav.myPlanning' },
+  { to: '/dashboard/actualites', icon: Newspaper, labelKey: 'nav.actus' },
+  { to: '/dashboard/stats', icon: Trophy, labelKey: 'nav.stats' },
+  { to: '/dashboard/profil', icon: User, labelKey: 'nav.myProfile' },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const clubLogoUrl = useClubLogo();
 
@@ -59,7 +61,6 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden lg:flex flex-col w-60 min-h-screen bg-white dark:bg-slate-900/80 border-r border-slate-200 dark:border-slate-700/40 flex-shrink-0">
-      {/* Logo */}
       <div className="px-5 py-5 border-b border-slate-200 dark:border-slate-700/40">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -73,14 +74,12 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {items.map((item) => (
-          <SidebarLink key={item.to} item={item} />
+          <SidebarLink key={item.to} item={item} label={t(item.labelKey)} />
         ))}
       </nav>
 
-      {/* User footer */}
       <div className="px-3 pb-4 border-t border-slate-200 dark:border-slate-700/40 pt-3 space-y-0.5">
         <NavLink
           to="/profile"
@@ -98,19 +97,20 @@ export default function Sidebar() {
               {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-              {ROLE_LABELS[role]}
+              {t(`roles.${role}`)}
             </p>
           </div>
           <ChevronRight size={14} className="text-slate-400 dark:text-slate-600 flex-shrink-0" />
         </NavLink>
 
+        <LanguageSwitcher />
+
         <button
           onClick={toggleTheme}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors text-sm font-medium"
-          aria-label="Changer le thème"
         >
           {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          <span>{theme === 'dark' ? 'Mode clair' : 'Mode sombre'}</span>
+          <span>{theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')}</span>
         </button>
 
         <button
@@ -118,14 +118,14 @@ export default function Sidebar() {
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/5 transition-colors text-sm font-medium"
         >
           <LogOut size={15} />
-          <span>Déconnexion</span>
+          <span>{t('nav.logout')}</span>
         </button>
       </div>
     </aside>
   );
 }
 
-function SidebarLink({ item }: { item: NavItem }) {
+function SidebarLink({ item, label }: { item: NavItem; label: string }) {
   const Icon = item.icon;
   return (
     <NavLink
@@ -143,7 +143,7 @@ function SidebarLink({ item }: { item: NavItem }) {
       {({ isActive }) => (
         <>
           <Icon size={16} className={isActive ? 'text-violet-600 dark:text-violet-400' : ''} />
-          <span>{item.label}</span>
+          <span>{label}</span>
         </>
       )}
     </NavLink>

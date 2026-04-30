@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { FolderOpen, Plus, Pencil, Trash2, AlertCircle } from 'lucide-react';
 import { getCategories, createCategorie, updateCategorie, deleteCategorie } from '@/api/categories';
 import type { Categorie } from '@/types';
+import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -9,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
 
 export default function CategoriesPage() {
+  const { t } = useI18n();
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -43,7 +45,7 @@ export default function CategoriesPage() {
   }
 
   async function handleSave() {
-    if (!nom.trim()) { setError('Le nom est requis.'); return; }
+    if (!nom.trim()) { setError(t('categories.nameRequired')); return; }
     setSaving(true);
     setError('');
     try {
@@ -58,7 +60,7 @@ export default function CategoriesPage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Erreur lors de la sauvegarde.'
+          t('common.saveError')
       );
     } finally {
       setSaving(false);
@@ -66,14 +68,14 @@ export default function CategoriesPage() {
   }
 
   async function handleDelete(cat: Categorie) {
-    if (!confirm(`Supprimer la catégorie "${cat.nom}" ?`)) return;
+    if (!confirm(t('categories.deleteConfirm').replace('{name}', cat.nom))) return;
     try {
       await deleteCategorie(cat.id);
       setCategories((prev) => prev.filter((c) => c.id !== cat.id));
     } catch (err: unknown) {
       alert(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          'Impossible de supprimer cette catégorie.'
+          t('categories.deleteError')
       );
     }
   }
@@ -83,25 +85,25 @@ export default function CategoriesPage() {
       <div className="p-6 max-w-2xl">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Gestion</p>
-            <h1 className="text-2xl font-extrabold text-slate-50">Catégories</h1>
+            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('categories.subtitle')}</p>
+            <h1 className="text-2xl font-extrabold text-slate-50">{t('categories.title')}</h1>
           </div>
           <Button onClick={openCreate}>
             <Plus size={15} />
-            <span>Ajouter</span>
+            <span>{t('common.add')}</span>
           </Button>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-slate-500 text-sm">Chargement…</div>
+          <div className="text-center py-16 text-slate-500 text-sm">{t('common.loading')}</div>
         ) : categories.length === 0 ? (
           <EmptyState
             icon={<FolderOpen size={22} />}
-            title="Aucune catégorie"
-            description="Créez vos catégories (U9, U11, Seniors…) pour organiser vos équipes."
+            title={t('categories.noCategories')}
+            description={t('categories.noCategoriesDesc')}
             action={
               <Button onClick={openCreate} variant="secondary">
-                <Plus size={15} /> Créer une catégorie
+                <Plus size={15} /> {t('categories.createCategory')}
               </Button>
             }
           />
@@ -119,7 +121,9 @@ export default function CategoriesPage() {
                   <p className="text-sm font-semibold text-slate-200">{cat.nom}</p>
                   {cat._count && (
                     <p className="text-xs text-slate-500">
-                      {cat._count.equipes} équipe{cat._count.equipes !== 1 ? 's' : ''}
+                      {cat._count.equipes === 1
+                        ? t('categories.teamCount').replace('{n}', String(cat._count.equipes))
+                        : t('categories.teamCountPlural').replace('{n}', String(cat._count.equipes))}
                     </p>
                   )}
                 </div>
@@ -144,12 +148,12 @@ export default function CategoriesPage() {
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={editing ? 'Modifier la catégorie' : 'Nouvelle catégorie'}
+        title={editing ? t('categories.editTitle') : t('categories.createTitle')}
         size="sm"
       >
         <Input
-          label="Nom de la catégorie"
-          placeholder="Ex : U13, Seniors, U17…"
+          label={t('categories.nameLabel')}
+          placeholder={t('categories.namePlaceholder')}
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           autoFocus
@@ -163,10 +167,10 @@ export default function CategoriesPage() {
         )}
         <div className="flex gap-3 mt-2">
           <Button variant="secondary" full onClick={() => setShowModal(false)}>
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button full onClick={handleSave} loading={saving}>
-            {editing ? 'Modifier' : 'Créer'}
+            {editing ? t('common.edit') : t('common.create')}
           </Button>
         </div>
       </Modal>

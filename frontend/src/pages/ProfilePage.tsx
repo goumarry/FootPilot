@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { Camera, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { uploadProfilePic } from '@/api/images';
 import AppLayout from '@/layouts/AppLayout';
-import { ROLE_LABELS } from '@/types';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export default function ProfilePage() {
     } catch (err: unknown) {
       setError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          "Impossible de téléverser l'image.",
+          t('common.saveError'),
       );
     } finally {
       setUploading(false);
@@ -36,18 +37,17 @@ export default function ProfilePage() {
     <AppLayout>
       <div className="p-6 max-w-sm">
         <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">
-          Compte
+          {t('profile.subtitle')}
         </p>
-        <h1 className="text-2xl font-extrabold text-slate-50 mb-8">Mon profil</h1>
+        <h1 className="text-2xl font-extrabold text-slate-50 mb-8">{t('profile.title')}</h1>
 
-        {/* Avatar */}
         <div className="flex flex-col items-center gap-4 mb-8">
           <div className="relative">
             <div className="w-24 h-24 rounded-2xl overflow-hidden bg-violet-600/20 border-2 border-violet-500/30 flex items-center justify-center">
               {user.profilePic ? (
                 <img
                   src={user.profilePic}
-                  alt="Photo de profil"
+                  alt={t('profile.profilePic')}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -70,17 +70,16 @@ export default function ProfilePage() {
             onChange={handleFile}
           />
           {uploading && (
-            <p className="text-xs text-slate-400">Traitement en cours…</p>
+            <p className="text-xs text-slate-400">{t('profile.processing')}</p>
           )}
           {error && <p className="text-xs text-red-400">{error}</p>}
         </div>
 
-        {/* Infos */}
         <div className="space-y-3">
-          <InfoRow label="Prénom" value={user.firstName} />
-          <InfoRow label="Nom" value={user.lastName} />
-          <InfoRow label="Email" value={user.email} />
-          <InfoRow label="Rôle" value={ROLE_LABELS[user.role]} />
+          <InfoRow label={t('profile.firstName')} value={user.firstName} />
+          <InfoRow label={t('profile.lastName')} value={user.lastName} />
+          <InfoRow label={t('profile.email')} value={user.email} />
+          <InfoRow label={t('profile.role')} value={t(`roles.${user.role}`)} />
         </div>
       </div>
     </AppLayout>

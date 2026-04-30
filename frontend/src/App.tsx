@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { I18nProvider } from '@/contexts/I18nContext';
 import RequireAuth from '@/components/layout/RequireAuth';
 
 // Public
@@ -37,6 +38,7 @@ const ALL_ROLES = ['GESTIONNAIRE', 'ENTRAINEUR', 'JOUEUR'] as const;
 export default function App() {
   return (
     <BrowserRouter>
+      <I18nProvider>
       <ThemeProvider>
       <AuthProvider>
         <Routes>
@@ -187,6 +189,7 @@ export default function App() {
         </Routes>
       </AuthProvider>
       </ThemeProvider>
+      </I18nProvider>
     </BrowserRouter>
   );
 }
