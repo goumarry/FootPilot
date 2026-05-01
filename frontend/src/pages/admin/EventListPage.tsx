@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, MapPin, ExternalLink, Pencil, Ban, Trash2, ClipboardList, Trophy, Star } from 'lucide-react';
+import { Calendar, Plus, MapPin, ExternalLink, Pencil, ChevronRight, Ban, Trash2, ClipboardList, Trophy, Star } from 'lucide-react';
 import {
   getEvenements, createEvenement, updateEvenement, deleteEvenement,
   saisirScore, saisirAppel, getAppel,
@@ -15,12 +15,12 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import Dialog, { type DialogConfig } from '@/components/ui/Dialog';
+import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import PlacesInput from '@/components/ui/PlacesInput';
 import {
   getStatut, formatDate, formatDuree, toDatetimeLocal, nowDatetimeLocal,
-  mapsLink, osmEmbed, teamLabel, startOfWeek, addDays, isSameDay,
-  DUREE_OPTIONS, DAY_LABELS_FR, DAY_LETTERS_FR,
+  mapsLink, osmEmbed, teamLabel, DUREE_OPTIONS,
 } from '@/lib/planning';
 
 const ALL_STATUTS: StatutPresence[] = ['PRESENT', 'ABSENT_NON_JUSTIFIE', 'BLESSE', 'RETARD', 'ABSENT_JUSTIFIE'];
@@ -60,8 +60,17 @@ function StarRating({ value, onChange, readonly }: { value: number | null; onCha
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <button key={i} type="button" disabled={readonly} onClick={() => onChange?.(i)} className={`p-0.5 transition-colors ${readonly ? 'cursor-default' : 'hover:scale-110'}`}>
-          <Star size={13} className={i <= (value ?? 0) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'} />
+        <button
+          key={i}
+          type="button"
+          disabled={readonly}
+          onClick={() => onChange?.(i)}
+          className={`p-0.5 transition-colors ${readonly ? 'cursor-default' : 'hover:scale-110'}`}
+        >
+          <Star
+            size={13}
+            className={i <= (value ?? 0) ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}
+          />
         </button>
       ))}
     </div>
@@ -144,6 +153,7 @@ function AttendancePanel({ ev, canEdit, statut, t }: {
 
   return (
     <div className="space-y-1">
+      {/* Header */}
       <div className={`flex items-center gap-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${isMatch ? 'grid grid-cols-[1fr_auto_auto_auto]' : 'grid grid-cols-[1fr_auto_auto]'}`}>
         <span>{t('common.player')}</span>
         <span className="w-28 text-center">{t('planning.attendanceStatut')}</span>
@@ -154,7 +164,10 @@ function AttendancePanel({ ev, canEdit, statut, t }: {
       {players.map((p) => {
         const d = draft[p.id] ?? { statut: 'ABSENT_NON_JUSTIFIE' as StatutPresence, note: null, buts: null };
         return (
-          <div key={p.id} className={`py-1.5 px-3 rounded-lg bg-slate-800/40 gap-2 ${isMatch ? 'grid grid-cols-[1fr_auto_auto_auto]' : 'grid grid-cols-[1fr_auto_auto]'} items-center`}>
+          <div
+            key={p.id}
+            className={`py-1.5 px-3 rounded-lg bg-slate-800/40 gap-2 ${isMatch ? 'grid grid-cols-[1fr_auto_auto_auto]' : 'grid grid-cols-[1fr_auto_auto]'} items-center`}
+          >
             <span className="text-sm text-slate-200 font-medium truncate">{p.firstName} {p.lastName}</span>
             {canEdit ? (
               <select
@@ -176,7 +189,9 @@ function AttendancePanel({ ev, canEdit, statut, t }: {
               <div className="w-14 flex justify-center">
                 {canEdit ? (
                   <input
-                    type="number" min={0} max={20}
+                    type="number"
+                    min={0}
+                    max={20}
                     value={d.buts ?? 0}
                     onChange={(e) => setPlayerDraft(p.id, { buts: Math.max(0, Number(e.target.value)) || null })}
                     className="w-12 text-center text-xs rounded-lg bg-slate-700/60 border border-slate-600/40 text-slate-200 px-1 py-1 focus:outline-none focus:ring-1 focus:ring-violet-500"
@@ -201,18 +216,64 @@ function AttendancePanel({ ev, canEdit, statut, t }: {
   );
 }
 
-function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function FilterBtn({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${active ? 'bg-violet-600 text-white' : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'}`}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+        active ? 'bg-violet-600 text-white' : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+      }`}
     >
       {label}
     </button>
   );
 }
 
-export default function PlanningPage() {
+function EventCard({ ev, locale, t, onClick }: { ev: Evenement; locale: string; t: (k: string) => string; onClick: () => void }) {
+  const statut = getStatut(ev);
+  const isMatch = ev.type === 'MATCH';
+  return (
+    <button onClick={onClick} className="w-full text-left bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5 hover:border-slate-600/60 hover:bg-slate-800/70 transition-all">
+      <div className="flex items-center gap-4">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMatch ? 'bg-violet-500/10' : 'bg-emerald-500/10'}`}>
+          <Calendar size={16} className={isMatch ? 'text-violet-400' : 'text-emerald-400'} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <Badge variant={isMatch ? 'violet' : 'green'}>{isMatch ? t('planning.match') : t('planning.training')}</Badge>
+            <StatutBadge statut={statut} t={t} />
+            {ev.equipe && (
+              <span className="text-xs text-slate-500">
+                {ev.equipe.nomEquipe}{ev.equipe.categorie?.nom && <span> · {ev.equipe.categorie.nom}</span>}
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-semibold text-slate-200">{formatDate(ev.dateHeure, locale)}</p>
+          {isMatch && ev.adversaire && (
+            <p className="text-xs text-slate-400 mt-0.5">vs <span className="font-medium">{ev.adversaire}</span></p>
+          )}
+          {ev.lieu && (
+            <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 truncate">
+              <MapPin size={10} className="flex-shrink-0" />{ev.lieu}
+            </p>
+          )}
+        </div>
+        {isMatch && ev.scoreDom != null && (
+          <span className="text-xs font-bold text-slate-300 mr-1 flex-shrink-0">{ev.scoreDom} – {ev.scoreExt}</span>
+        )}
+        <ChevronRight size={15} className="text-slate-600 flex-shrink-0" />
+      </div>
+    </button>
+  );
+}
+
+interface EventListPageProps {
+  typeFilter?: 'MATCH' | 'ENTRAINEMENT';
+  pageTitle: string;
+  pageSubtitle: string;
+}
+
+export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: EventListPageProps) {
   const { locale, t } = useI18n();
   const { user } = useAuth();
   const canManage = user?.role === 'GESTIONNAIRE' || user?.role === 'ENTRAINEUR';
@@ -223,13 +284,12 @@ export default function PlanningPage() {
   const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<string>(() => isEntraineur ? 'mine' : 'all');
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
 
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState('');
   const [form, setForm] = useState({
-    type: 'ENTRAINEMENT' as 'MATCH' | 'ENTRAINEMENT',
+    type: (typeFilter ?? 'ENTRAINEMENT') as 'MATCH' | 'ENTRAINEMENT',
     equipeId: '', adversaire: '', dateHeure: '', duree: 120,
     lieu: '', latitude: undefined as number | undefined, longitude: undefined as number | undefined, description: '',
   });
@@ -251,11 +311,11 @@ export default function PlanningPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [ev, eq] = await Promise.all([getEvenements(), getEquipes()]);
+    const [ev, eq] = await Promise.all([getEvenements({ type: typeFilter }), getEquipes()]);
     setEvenements(ev);
     setEquipes(eq);
     setLoading(false);
-  }, []);
+  }, [typeFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -295,26 +355,8 @@ export default function PlanningPage() {
     return evenements.filter((e) => e.equipeId === filterMode);
   }, [evenements, filterMode, myTeamIds]);
 
-  const days = useMemo(() => Array.from({ length: 28 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-
-  const eventsByDay = useMemo(() => {
-    const map = new Map<string, Evenement[]>();
-    for (const ev of filtered) {
-      const key = new Date(ev.dateHeure).toDateString();
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(ev);
-    }
-    return map;
-  }, [filtered]);
-
-  const windowEnd = addDays(weekStart, 28);
-  const windowLabel = (() => {
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
-    const loc = locale === 'fr' ? 'fr-FR' : 'en-GB';
-    return `${weekStart.toLocaleDateString(loc, opts)} — ${addDays(weekStart, 27).toLocaleDateString(loc, { ...opts, year: 'numeric' })}`;
-  })();
-
-  const today = new Date();
+  const upcoming = filtered.filter((e) => { const s = getStatut(e); return s === 'AVENIR' || s === 'EN_COURS'; });
+  const past = filtered.filter((e) => { const s = getStatut(e); return s === 'TERMINE' || s === 'ANNULE'; });
 
   async function handleCreate() {
     if (!form.equipeId || !form.dateHeure) { setCreateError(t('planning.errorRequired')); return; }
@@ -338,16 +380,10 @@ export default function PlanningPage() {
     } finally { setSaving(false); }
   }
 
-  function openDetail(ev: Evenement) {
-    setSelected(ev); setEditMode(false); setEditError(''); setScoreEdit(false); setScoreError('');
-  }
-
+  function openDetail(ev: Evenement) { setSelected(ev); setEditMode(false); setEditError(''); setScoreEdit(false); setScoreError(''); }
   function openEdit() {
     if (!selected) return;
-    setEditForm({
-      dateHeure: toDatetimeLocal(selected.dateHeure), duree: selected.duree ?? 120, lieu: selected.lieu ?? '',
-      latitude: selected.latitude ?? undefined, longitude: selected.longitude ?? undefined, description: selected.description ?? '',
-    });
+    setEditForm({ dateHeure: toDatetimeLocal(selected.dateHeure), duree: selected.duree ?? 120, lieu: selected.lieu ?? '', latitude: selected.latitude ?? undefined, longitude: selected.longitude ?? undefined, description: selected.description ?? '' });
     setEditMode(true); setEditError('');
   }
 
@@ -421,117 +457,66 @@ export default function PlanningPage() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6">
-        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+      <div className="p-4 md:p-6 max-w-4xl">
+        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>
-            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-0.5">{t('planning.subtitle')}</p>
-            <h1 className="text-xl md:text-2xl font-extrabold text-slate-50">{t('planning.calendarTitle')}</h1>
+            <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{pageSubtitle}</p>
+            <h1 className="text-xl md:text-2xl font-extrabold text-slate-50">{pageTitle}</h1>
           </div>
           {canManage && createEquipes.length > 0 && (
-            <Button onClick={() => setShowCreate(true)} size="sm">
-              <Plus size={14} /><span className="hidden sm:inline">{t('planning.add')}</span>
-            </Button>
+            <Button onClick={() => setShowCreate(true)}><Plus size={15} /><span>{t('planning.add')}</span></Button>
           )}
         </div>
 
-        <div className="flex gap-2 flex-wrap mb-4 overflow-x-auto pb-1">
-          {isEntraineur && <FilterChip active={filterMode === 'mine'} onClick={() => setFilterMode('mine')} label={t('planning.myTeams')} />}
-          <FilterChip active={filterMode === 'all'} onClick={() => setFilterMode('all')} label={t('planning.allTeams')} />
+        <div className="flex gap-2 flex-wrap mb-6 overflow-x-auto pb-1">
+          {isEntraineur && <FilterBtn active={filterMode === 'mine'} onClick={() => setFilterMode('mine')} label={t('planning.myTeams')} />}
+          <FilterBtn active={filterMode === 'all'} onClick={() => setFilterMode('all')} label={t('planning.allTeams')} />
           {filterEquipes.map((eq) => (
-            <FilterChip key={eq.id} active={filterMode === eq.id} onClick={() => setFilterMode(eq.id)} label={teamLabel(eq)} />
+            <FilterBtn key={eq.id} active={filterMode === eq.id} onClick={() => setFilterMode(eq.id)} label={teamLabel(eq)} />
           ))}
-        </div>
-
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => setWeekStart((d) => addDays(d, -28))} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors">
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-sm font-semibold text-slate-300 flex-1 text-center">{windowLabel}</span>
-          <button onClick={() => setWeekStart((d) => addDays(d, 28))} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors">
-            <ChevronRight size={16} />
-          </button>
         </div>
 
         {loading ? (
           <div className="text-center py-16 text-slate-500 text-sm">{t('planning.loading')}</div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<Calendar size={22} />}
+            title={t('planning.noEvents')}
+            description={t('planning.noEventsDesc')}
+            action={canManage && createEquipes.length > 0 ? (
+              <Button onClick={() => setShowCreate(true)} variant="secondary"><Plus size={15} /> {t('planning.createEvent')}</Button>
+            ) : undefined}
+          />
         ) : (
-          <>
-            <div className="grid grid-cols-7 gap-1 mb-1">
-              {DAY_LABELS_FR.map((d, i) => (
-                <div key={i} className="text-center py-1">
-                  <span className="hidden sm:inline text-xs font-bold text-slate-500">{d}</span>
-                  <span className="sm:hidden text-[10px] font-bold text-slate-500">{DAY_LETTERS_FR[i]}</span>
+          <div className="space-y-6">
+            {upcoming.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{t('planning.upcoming')}</h2>
+                <div className="space-y-2">
+                  {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} locale={locale} t={t} onClick={() => openDetail(ev)} />)}
                 </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {days.map((day) => {
-                const key = day.toDateString();
-                const dayEvents = eventsByDay.get(key) ?? [];
-                const isToday = isSameDay(day, today);
-                const isPastDay = day < new Date(today.toDateString());
-                const isOutsideWindow = day >= windowEnd;
-                if (isOutsideWindow) return null;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => {
-                      if (canManage && !isPastDay && createEquipes.length > 0) {
-                        const d = new Date(day); d.setHours(10, 0, 0, 0);
-                        setForm((f) => ({ ...f, dateHeure: toDatetimeLocal(d.toISOString()) }));
-                        setShowCreate(true);
-                      }
-                    }}
-                    className={`min-h-[72px] sm:min-h-[90px] md:min-h-[100px] rounded-xl p-1 sm:p-1.5 border cursor-pointer transition-colors ${
-                      isToday ? 'border-violet-500/50 bg-violet-500/8'
-                      : isPastDay ? 'border-slate-700/20 bg-slate-800/20 cursor-default opacity-70'
-                      : 'border-slate-700/30 bg-slate-800/30 hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className={`text-[11px] sm:text-xs font-bold mb-1 ${isToday ? 'text-violet-400' : isPastDay ? 'text-slate-600' : 'text-slate-400'}`}>
-                      {day.getDate()}
-                    </div>
-                    {dayEvents.slice(0, 3).map((ev) => {
-                      const evStatut = getStatut(ev);
-                      const isMatch = ev.type === 'MATCH';
-                      return (
-                        <button
-                          key={ev.id}
-                          onClick={(e) => { e.stopPropagation(); openDetail(ev); }}
-                          className={`w-full text-left mb-0.5 px-1 py-0.5 rounded-md truncate transition-opacity hover:opacity-80 ${
-                            ev.annule ? 'bg-red-500/10 text-red-400/60'
-                            : evStatut === 'EN_COURS' ? (isMatch ? 'bg-violet-500/30 text-violet-200' : 'bg-emerald-500/25 text-emerald-200')
-                            : isMatch ? 'bg-violet-500/15 text-violet-300' : 'bg-emerald-500/10 text-emerald-400'
-                          }`}
-                        >
-                          <span className="hidden md:inline text-[10px] font-semibold">
-                            {new Date(ev.dateHeure).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}{' '}
-                          </span>
-                          <span className="text-[9px] sm:text-[10px] font-bold">{isMatch ? 'M' : 'E'}</span>
-                          <span className="hidden lg:inline text-[10px]"> {ev.equipe?.nomEquipe}</span>
-                        </button>
-                      );
-                    })}
-                    {dayEvents.length > 3 && <p className="text-[9px] text-slate-500 pl-1">+{dayEvents.length - 3}</p>}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-700/30">
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-violet-500/20 inline-block" /><span className="text-[10px] text-slate-500">{t('planning.match')}</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500/15 inline-block" /><span className="text-[10px] text-slate-500">{t('planning.training')}</span></div>
-              <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-violet-500/8 border border-violet-500/50 inline-block" /><span className="text-[10px] text-slate-500">{t('planning.statusEnCours')}</span></div>
-            </div>
-          </>
+              </div>
+            )}
+            {past.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{t('planning.past')}</h2>
+                <div className="space-y-2 opacity-60">
+                  {[...past].reverse().slice(0, 10).map((ev) => <EventCard key={ev.id} ev={ev} locale={locale} t={t} onClick={() => openDetail(ev)} />)}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       {/* Modal création */}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title={t('planning.newEvent')}>
-        <Select label={t('planning.type')} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as 'MATCH' | 'ENTRAINEMENT' }))}>
-          <option value="ENTRAINEMENT">{t('planning.training')}</option>
-          <option value="MATCH">{t('planning.match')}</option>
-        </Select>
+        {!typeFilter && (
+          <Select label={t('planning.type')} value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as 'MATCH' | 'ENTRAINEMENT' }))}>
+            <option value="ENTRAINEMENT">{t('planning.training')}</option>
+            <option value="MATCH">{t('planning.match')}</option>
+          </Select>
+        )}
         <Select
           label={form.type === 'MATCH' ? t('planning.homeTeam') : t('planning.team')}
           value={form.equipeId}
@@ -694,7 +679,7 @@ export default function PlanningPage() {
                         <Button size="sm" variant="danger" onClick={confirmDelete}><Trash2 size={13} />{t('common.delete')}</Button>
                       </div>
                     </>
-                  ) : !selectedCanEdit && canManage ? (
+                  ) : !selectedCanEdit ? (
                     <p className="text-xs text-slate-500 italic">{t('planning.notYourTeam')}</p>
                   ) : (
                     <p className="text-xs text-slate-500 italic">{t('planning.pastEventHint')}</p>

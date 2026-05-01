@@ -7,10 +7,13 @@ import { verifyToken, requireRole } from '../middleware/auth';
 const router = Router();
 router.use(verifyToken);
 
+// ── Schemas ───────────────────────────────────────────────────────────────────
+
 const evenementBaseSchema = z.object({
   type: z.enum(['MATCH', 'ENTRAINEMENT']),
   equipeId: z.string(),
   dateHeure: z.string(),
+  duree: z.number().int().min(15).max(480).optional(),
   lieu: z.string().max(255).optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
@@ -19,8 +22,7 @@ const evenementBaseSchema = z.object({
 
 const matchSchema = evenementBaseSchema.extend({
   type: z.literal('MATCH'),
-  equipesDomId: z.string(),
-  equipesExtId: z.string(),
+  adversaire: z.string().min(1).max(100),
   placesCovoiturage: z.number().int().min(0).optional(),
 });
 
@@ -31,10 +33,48 @@ const entrainementSchema = evenementBaseSchema.extend({
 
 const eventCreateSchema = z.discriminatedUnion('type', [matchSchema, entrainementSchema]);
 
-type JoueurRaw = { id: string; firstName: string | null; lastName: string | null; photoUrl?: string | null; user?: { firstName: string; lastName: string } | null };
-function normalizeJoueurNom<T extends JoueurRaw>(j: T) {
-  const { user, ...rest } = j as T & { user?: unknown };
-  return { ...rest, firstName: (j.user?.firstName ?? j.firstName) ?? '', lastName: (j.user?.lastName ?? j.lastName) ?? '' };
+const butSchema = z.object({
+  buteurId: z.string(),
+  passeurId: z.string().optional(),
+  minute: z.number().int().min(1).max(150).optional(),
+  zoneTir: z.enum(['TETE', 'PIED_GAUCHE', 'PIED_DROIT']).optional(),
+  circonstance: z.enum(['JEU_OUVERT', 'COUP_FRANC', 'PENALTY']).optional(),
+  estCSC: z.boolean().default(false),
+});
+
+const scoreSchema = z.object({
+  scoreDom: z.number().int().min(0),
+  scoreExt: z.number().int().min(0),
+  statut: z.enum(['AVENIR', 'TERMINE', 'ANNULE']).optional(),
+});
+
+const appelSchema = z.object({
+  presences: z.array(z.object({
+    joueurId: z.string(),
+    statut: z.enum(['PRESENT', 'ABSENT_JUSTIFIE', 'ABSENT_NON_JUSTIFIE', 'RETARD', 'BLESSE']),
+    note: z.number().int().min(1).max(5).optional().nullable(),
+    buts: z.number().int().min(0).optional().nullable(),
+    commentaire: z.string().optional(),
+  })),
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+type JoueurRaw = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  photoUrl?: string | null;
+  user?: { firstName: string; lastName: string } | null;
+};
+
+function normalizeJoueur<T extends JoueurRaw>(j: T) {
+  const { user: _user, ...rest } = j as T & { user?: unknown };
+  return {
+    ...rest,
+    firstName: (j.user?.firstName ?? j.firstName) ?? '',
+    lastName: (j.user?.lastName ?? j.lastName) ?? '',
+  };
 }
 
 const joueurSelect = {
@@ -45,16 +85,31 @@ const joueurSelect = {
   user: { select: { firstName: true, lastName: true } },
 } as const;
 
-// GET /api/evenements
+const butInclude = {
+  buteur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
+  passeur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
+} as const;
+
+function isEventPast(ev: { dateHeure: Date; duree: number }): boolean {
+  return Date.now() > new Date(ev.dateHeure).getTime() + ev.duree * 60000;
+}
+
+async function checkCoachAccess(userId: string, equipeId: string): Promise<boolean> {
+  const entraineur = await prisma.entraineur.findFirst({ where: { userId } });
+  if (!entraineur) return false;
+  const record = await prisma.entraineurEquipe.findUnique({
+    where: { entraineurId_equipeId: { entraineurId: entraineur.id, equipeId } },
+  });
+  return record !== null;
+}
+
+// ── GET /api/evenements ───────────────────────────────────────────────────────
+
 router.get('/', async (req, res) => {
-  const { equipeId, from, to } = req.query as Record<string, string | undefined>;
+  const { equipeId, from, to, type } = req.query as Record<string, string | undefined>;
   const clubId = req.user!.clubId;
 
-  let equipeFilter: string | undefined;
-
-  if (equipeId) {
-    equipeFilter = equipeId;
-  } else if (req.user!.role === Role.JOUEUR) {
+  if (req.user!.role === Role.JOUEUR) {
     const joueur = await prisma.joueur.findFirst({
       where: { userId: req.user!.userId },
       include: { equipes: { where: { dateFin: null }, select: { equipeId: true } } },
@@ -63,182 +118,153 @@ router.get('/', async (req, res) => {
     const ids = joueur.equipes.map((e) => e.equipeId);
     if (ids.length === 0) return res.json([]);
 
-    const evenements = await prisma.evenement.findMany({
+    const allEvenements = await prisma.evenement.findMany({
       where: {
-        equipeId: { in: ids },
+        OR: [
+          { equipeId: { in: ids } },
+          { presences: { some: { joueurId: joueur.id } } },
+        ],
         ...(from && { dateHeure: { gte: new Date(from) } }),
         ...(to && { dateHeure: { lte: new Date(to) } }),
       },
       include: {
         equipe: { select: { id: true, nomEquipe: true, categorie: { select: { nom: true } } } },
-        match: true,
-        entrainement: true,
+        presences: { where: { joueurId: joueur.id }, select: { joueurId: true } },
       },
       orderBy: { dateHeure: 'asc' },
     });
-    return res.json(evenements);
-  } else if (req.user!.role === Role.ENTRAINEUR) {
-    const entraineur = await prisma.entraineur.findFirst({
-      where: { userId: req.user!.userId },
-      include: { equipes: { select: { equipeId: true } } },
-    });
-    const ids = entraineur?.equipes.map((e) => e.equipeId) ?? [];
 
-    const evenements = await prisma.evenement.findMany({
-      where: {
-        equipeId: { in: ids },
-        ...(from && { dateHeure: { gte: new Date(from) } }),
-        ...(to && { dateHeure: { lte: new Date(to) } }),
-      },
-      include: {
-        equipe: { select: { id: true, nomEquipe: true, categorie: { select: { nom: true } } } },
-        match: true,
-        entrainement: true,
-      },
-      orderBy: { dateHeure: 'asc' },
+    const now = Date.now();
+    const filtered = allEvenements.filter((ev) => {
+      const end = new Date(ev.dateHeure).getTime() + ev.duree * 60000;
+      const isPast = now >= end;
+      if (!isPast) return ids.includes(ev.equipeId);
+      // Passé : uniquement si le joueur figure dans la liste d'appel
+      return ev.presences.length > 0;
     });
-    return res.json(evenements);
+
+    const typeFiltered = type ? filtered.filter((ev) => ev.type === type) : filtered;
+    return res.json(typeFiltered.map(({ presences: _p, ...ev }) => ev));
   }
 
-  // GESTIONNAIRE : tout le club
   const evenements = await prisma.evenement.findMany({
     where: {
       equipe: clubId ? { clubId } : {},
-      ...(equipeFilter && { equipeId: equipeFilter }),
+      ...(equipeId && { equipeId }),
+      ...(type && { type: type as 'MATCH' | 'ENTRAINEMENT' }),
       ...(from && { dateHeure: { gte: new Date(from) } }),
       ...(to && { dateHeure: { lte: new Date(to) } }),
     },
     include: {
       equipe: { select: { id: true, nomEquipe: true, categorie: { select: { nom: true } } } },
-      match: true,
-      entrainement: true,
     },
     orderBy: { dateHeure: 'asc' },
   });
   return res.json(evenements);
 });
 
-// GET /api/evenements/:id
+// ── GET /api/evenements/:id ───────────────────────────────────────────────────
+
 router.get('/:id', async (req, res) => {
   const evenement = await prisma.evenement.findUnique({
     where: { id: req.params.id },
     include: {
       equipe: { select: { id: true, nomEquipe: true, categorie: true } },
-      match: {
-        include: {
-          equipeDom: { select: { id: true, nomEquipe: true } },
-          equipeExt: { select: { id: true, nomEquipe: true } },
-          buts: {
-            include: {
-              buteur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
-              passeur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
-            },
-          },
-          convocations: {
-            include: { joueur: { select: joueurSelect } },
-          },
-        },
+      buts: {
+        include: butInclude,
+        orderBy: { minute: 'asc' },
       },
-      entrainement: {
-        include: {
-          presences: {
-            include: { joueur: { select: joueurSelect } },
-          },
-        },
+      presences: {
+        include: { joueur: { select: joueurSelect } },
       },
     },
   });
   if (!evenement) return res.status(404).json({ message: 'Événement introuvable.' });
 
-  // Normalise les noms des joueurs dans les données imbriquées
-  const result = {
+  return res.json({
     ...evenement,
-    match: evenement.match
-      ? {
-          ...evenement.match,
-          buts: evenement.match.buts.map((b) => ({
-            ...b,
-            buteur: normalizeJoueurNom(b.buteur),
-            passeur: b.passeur ? normalizeJoueurNom(b.passeur) : null,
-          })),
-          convocations: evenement.match.convocations.map((c) => ({
-            ...c,
-            joueur: normalizeJoueurNom(c.joueur),
-          })),
-        }
-      : null,
-    entrainement: evenement.entrainement
-      ? {
-          ...evenement.entrainement,
-          presences: evenement.entrainement.presences.map((p) => ({
-            ...p,
-            joueur: normalizeJoueurNom(p.joueur),
-          })),
-        }
-      : null,
-  };
-
-  return res.json(result);
+    buts: evenement.buts.map((b) => ({
+      ...b,
+      buteur: normalizeJoueur(b.buteur),
+      passeur: b.passeur ? normalizeJoueur(b.passeur) : null,
+    })),
+    presences: evenement.presences.map((p) => ({
+      ...p,
+      joueur: normalizeJoueur(p.joueur),
+    })),
+  });
 });
 
-// POST /api/evenements
+// ── POST /api/evenements ──────────────────────────────────────────────────────
+
 router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const parsed = eventCreateSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
   }
 
-  const { type, equipeId, dateHeure, lieu, latitude, longitude, description } = parsed.data;
+  const { type, equipeId, dateHeure, duree, lieu, latitude, longitude, description } = parsed.data;
 
-  const evenement = await prisma.$transaction(async (tx) => {
-    const ev = await tx.evenement.create({
-      data: { type, equipeId, dateHeure: new Date(dateHeure), lieu, latitude, longitude, description },
-    });
+  if (new Date(dateHeure) <= new Date()) {
+    return res.status(400).json({ message: "La date et l'heure de l'événement ne peuvent pas être dans le passé." });
+  }
 
-    if (type === 'MATCH') {
-      const d = parsed.data as z.infer<typeof matchSchema>;
-      await tx.match.create({
-        data: {
-          id: ev.id,
-          equipesDomId: d.equipesDomId,
-          equipesExtId: d.equipesExtId,
-          placesCovoiturage: d.placesCovoiturage ?? 0,
-        },
-      });
-    } else {
-      const d = parsed.data as z.infer<typeof entrainementSchema>;
-      await tx.entrainement.create({
-        data: { id: ev.id, categorieId: d.categorieId },
-      });
+  if (req.user!.role === Role.ENTRAINEUR) {
+    if (!(await checkCoachAccess(req.user!.userId, equipeId))) {
+      return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
     }
+  }
 
-    return tx.evenement.findUnique({
-      where: { id: ev.id },
-      include: {
-        equipe: { select: { id: true, nomEquipe: true } },
-        match: true,
-        entrainement: true,
-      },
-    });
+  const data: Record<string, unknown> = {
+    type, equipeId, dateHeure: new Date(dateHeure),
+    duree: duree ?? 120, lieu, latitude, longitude, description,
+  };
+
+  if (type === 'MATCH') {
+    const d = parsed.data as z.infer<typeof matchSchema>;
+    data.adversaire = d.adversaire;
+    data.placesCovoiturage = d.placesCovoiturage ?? 0;
+    data.statutMatch = 'AVENIR';
+  } else {
+    const d = parsed.data as z.infer<typeof entrainementSchema>;
+    data.categorieId = d.categorieId;
+  }
+
+  const evenement = await prisma.evenement.create({
+    data: data as Parameters<typeof prisma.evenement.create>[0]['data'],
+    include: { equipe: { select: { id: true, nomEquipe: true, categorie: { select: { nom: true } } } } },
   });
 
   return res.status(201).json(evenement);
 });
 
-// PUT /api/evenements/:id
+// ── PUT /api/evenements/:id ───────────────────────────────────────────────────
+
 router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const ev = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!ev) return res.status(404).json({ message: 'Événement introuvable.' });
 
+  if (req.user!.role === Role.ENTRAINEUR) {
+    if (!(await checkCoachAccess(req.user!.userId, ev.equipeId))) {
+      return res.status(403).json({ message: "Vous n'êtes pas entraîneur de cette équipe." });
+    }
+  }
+
+  if (isEventPast(ev)) {
+    return res.status(403).json({ message: 'Cet événement est terminé et ne peut plus être modifié.' });
+  }
+
   const updateSchema = z.object({
     dateHeure: z.string().optional(),
-    lieu: z.string().max(255).optional(),
-    description: z.string().optional(),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
+    duree: z.number().int().min(15).max(480).optional(),
+    annule: z.boolean().optional(),
+    lieu: z.string().max(255).optional().nullable(),
+    description: z.string().optional().nullable(),
+    latitude: z.number().optional().nullable(),
+    longitude: z.number().optional().nullable(),
     scoreDom: z.number().int().min(0).optional(),
     scoreExt: z.number().int().min(0).optional(),
-    statut: z.enum(['AVENIR', 'TERMINE', 'ANNULE']).optional(),
+    statutMatch: z.enum(['AVENIR', 'TERMINE', 'ANNULE']).optional(),
   });
 
   const parsed = updateSchema.safeParse(req.body);
@@ -246,36 +272,186 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, 
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
   }
 
-  const { scoreDom, scoreExt, statut, dateHeure, ...rest } = parsed.data;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.evenement.update({
-      where: { id: req.params.id },
-      data: { ...rest, dateHeure: dateHeure ? new Date(dateHeure) : undefined },
-    });
-
-    if (ev.type === 'MATCH' && (scoreDom !== undefined || scoreExt !== undefined || statut)) {
-      await tx.match.update({
-        where: { id: req.params.id },
-        data: { scoreDom, scoreExt, statut },
-      });
-    }
-  });
-
-  const updated = await prisma.evenement.findUnique({
+  const { dateHeure, ...rest } = parsed.data;
+  const updated = await prisma.evenement.update({
     where: { id: req.params.id },
-    include: { match: true, entrainement: true },
+    data: { ...rest, dateHeure: dateHeure ? new Date(dateHeure) : undefined },
+    include: { equipe: { select: { id: true, nomEquipe: true, categorie: { select: { nom: true } } } } },
   });
   return res.json(updated);
 });
 
-// DELETE /api/evenements/:id
+// ── DELETE /api/evenements/:id ────────────────────────────────────────────────
+
 router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const ev = await prisma.evenement.findUnique({ where: { id: req.params.id } });
   if (!ev) return res.status(404).json({ message: 'Événement introuvable.' });
 
+  if (req.user!.role === Role.ENTRAINEUR) {
+    if (!(await checkCoachAccess(req.user!.userId, ev.equipeId))) {
+      return res.status(403).json({ message: "Vous n'êtes pas entraîneur de cette équipe." });
+    }
+  }
+
+  if (isEventPast(ev)) {
+    return res.status(403).json({ message: 'Cet événement est terminé et ne peut plus être supprimé.' });
+  }
+
   await prisma.evenement.delete({ where: { id: req.params.id } });
   return res.json({ message: 'Événement supprimé.' });
+});
+
+// ── GET /api/evenements/:id/appel ─────────────────────────────────────────────
+
+router.get('/:id/appel', async (req, res) => {
+  const ev = await prisma.evenement.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, equipeId: true, snapshotPris: true, dateHeure: true },
+  });
+  if (!ev) return res.status(404).json({ message: 'Événement introuvable.' });
+
+  // Figer la liste dès que l'événement a commencé (snapshot unique)
+  if (!ev.snapshotPris && Date.now() >= new Date(ev.dateHeure).getTime()) {
+    const teamMembers = await prisma.joueurEquipe.findMany({
+      where: { equipeId: ev.equipeId, dateFin: null },
+      select: { joueurId: true },
+    });
+    if (teamMembers.length > 0) {
+      await prisma.$transaction([
+        ...teamMembers.map((je) =>
+          prisma.presence.upsert({
+            where: { evenementId_joueurId: { evenementId: ev.id, joueurId: je.joueurId } },
+            update: {},
+            create: { evenementId: ev.id, joueurId: je.joueurId, statut: 'PRESENT', note: 3 },
+          })
+        ),
+        prisma.evenement.update({ where: { id: ev.id }, data: { snapshotPris: true } }),
+      ]);
+    }
+  }
+
+  const presences = await prisma.presence.findMany({
+    where: { evenementId: req.params.id },
+    include: { joueur: { select: joueurSelect } },
+  });
+  return res.json(presences.map((p) => ({
+    ...p,
+    joueur: normalizeJoueur(p.joueur),
+  })));
+});
+
+// ── POST /api/evenements/:id/appel ────────────────────────────────────────────
+
+router.post('/:id/appel', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
+  const parsed = appelSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: 'Données invalides.' });
+
+  const evenement = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!evenement) return res.status(404).json({ message: 'Événement introuvable.' });
+  if (evenement.annule) return res.status(403).json({ message: 'Cet événement est annulé.' });
+
+  if (req.user!.role === Role.ENTRAINEUR) {
+    if (!(await checkCoachAccess(req.user!.userId, evenement.equipeId))) {
+      return res.status(403).json({ message: "Vous n'êtes pas entraîneur de cette équipe." });
+    }
+  }
+
+  let presencesToSave = parsed.data.presences;
+
+  // Snapshot figé : on ne peut modifier que les joueurs déjà dans la liste
+  if (evenement.snapshotPris) {
+    const existing = await prisma.presence.findMany({
+      where: { evenementId: req.params.id },
+      select: { joueurId: true },
+    });
+    const existingIds = new Set(existing.map((p) => p.joueurId));
+    presencesToSave = presencesToSave.filter((p) => existingIds.has(p.joueurId));
+  }
+
+  if (presencesToSave.length === 0) return res.status(201).json([]);
+
+  const records = await prisma.$transaction(
+    presencesToSave.map((p) =>
+      prisma.presence.upsert({
+        where: { evenementId_joueurId: { evenementId: req.params.id, joueurId: p.joueurId } },
+        update: { statut: p.statut, note: p.note ?? null, buts: p.buts ?? null, commentaire: p.commentaire },
+        create: {
+          evenementId: req.params.id, joueurId: p.joueurId,
+          statut: p.statut, note: p.note ?? null, buts: p.buts ?? null, commentaire: p.commentaire,
+        },
+      })
+    )
+  );
+  return res.status(201).json(records);
+});
+
+// ── PUT /api/evenements/:id/score ─────────────────────────────────────────────
+
+router.put('/:id/score', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
+  const parsed = scoreSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
+  }
+
+  const ev = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!ev || ev.type !== 'MATCH') return res.status(404).json({ message: 'Match introuvable.' });
+
+  const updated = await prisma.evenement.update({
+    where: { id: req.params.id },
+    data: {
+      scoreDom: parsed.data.scoreDom,
+      scoreExt: parsed.data.scoreExt,
+      statutMatch: parsed.data.statut ?? 'TERMINE',
+    },
+  });
+  return res.json(updated);
+});
+
+// ── GET /api/evenements/:id/buts ──────────────────────────────────────────────
+
+router.get('/:id/buts', async (req, res) => {
+  const buts = await prisma.but.findMany({
+    where: { evenementId: req.params.id },
+    include: butInclude,
+    orderBy: { minute: 'asc' },
+  });
+  return res.json(buts.map((b) => ({
+    ...b,
+    buteur: normalizeJoueur(b.buteur),
+    passeur: b.passeur ? normalizeJoueur(b.passeur) : null,
+  })));
+});
+
+// ── POST /api/evenements/:id/buts ─────────────────────────────────────────────
+
+router.post('/:id/buts', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
+  const parsed = butSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
+  }
+
+  const ev = await prisma.evenement.findUnique({ where: { id: req.params.id } });
+  if (!ev || ev.type !== 'MATCH') return res.status(404).json({ message: 'Match introuvable.' });
+
+  const but = await prisma.but.create({
+    data: { evenementId: req.params.id, ...parsed.data },
+    include: butInclude,
+  });
+
+  return res.status(201).json({
+    ...but,
+    buteur: normalizeJoueur(but.buteur),
+    passeur: but.passeur ? normalizeJoueur(but.passeur) : null,
+  });
+});
+
+// ── DELETE /api/evenements/:id/buts/:butId ────────────────────────────────────
+
+router.delete('/:id/buts/:butId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
+  const but = await prisma.but.findUnique({ where: { id: req.params.butId } });
+  if (!but || but.evenementId !== req.params.id) return res.status(404).json({ message: 'But introuvable.' });
+  await prisma.but.delete({ where: { id: req.params.butId } });
+  return res.json({ message: 'But supprimé.' });
 });
 
 export default router;

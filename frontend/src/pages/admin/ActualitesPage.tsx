@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
+import Dialog, { type DialogConfig } from '@/components/ui/Dialog';
 import EmptyState from '@/components/ui/EmptyState';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -31,6 +32,7 @@ export default function ActualitesPage() {
   const [form, setForm] = useState({ titre: '', contenu: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
   const load = useCallback(async (p = 1) => {
     setLoading(true);
@@ -65,10 +67,17 @@ export default function ActualitesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm(t('news.deleteConfirm'))) return;
-    await deleteActualite(id);
-    setActualites((prev) => prev.filter((a) => a.id !== id));
+  function confirmDelete(id: string) {
+    setDialog({
+      message: t('news.deleteConfirm'),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      onConfirm: async () => {
+        setDialog(null);
+        await deleteActualite(id);
+        setActualites((prev) => prev.filter((a) => a.id !== id));
+      },
+    });
   }
 
   const canPublish = user?.role === 'GESTIONNAIRE' || user?.role === 'ENTRAINEUR';
@@ -120,7 +129,7 @@ export default function ActualitesPage() {
                   </div>
                   {canPublish && (
                     <button
-                      onClick={() => handleDelete(actu.id)}
+                      onClick={() => confirmDelete(actu.id)}
                       className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
                     >
                       <Trash2 size={15} />
@@ -174,6 +183,16 @@ export default function ActualitesPage() {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={!!dialog}
+        title={dialog?.title}
+        message={dialog?.message ?? ''}
+        variant={dialog?.variant}
+        confirmLabel={dialog?.confirmLabel}
+        onConfirm={dialog?.onConfirm}
+        onClose={() => setDialog(null)}
+      />
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title={t('news.modalTitle')}>
         <Input

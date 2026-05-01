@@ -2,7 +2,8 @@ export type Role = 'GESTIONNAIRE' | 'ENTRAINEUR' | 'JOUEUR';
 export type Poste = 'DEF' | 'MIL' | 'ATT' | 'GB';
 export type StatutMatch = 'AVENIR' | 'TERMINE' | 'ANNULE';
 export type TypeEvenement = 'MATCH' | 'ENTRAINEMENT';
-export type StatutPresence = 'PRESENT' | 'ABSENT_JUSTIFIE' | 'ABSENT_NON_JUSTIFIE' | 'RETARD';
+export type StatutPresence = 'PRESENT' | 'ABSENT_JUSTIFIE' | 'ABSENT_NON_JUSTIFIE' | 'RETARD' | 'BLESSE';
+export type StatutEvenement = 'AVENIR' | 'EN_COURS' | 'TERMINE' | 'ANNULE';
 
 export interface User {
   id: string;
@@ -43,9 +44,10 @@ export interface Equipe {
   niveauChampionnat?: string | null;
   categorie?: Categorie;
   _count?: { joueurs: number; entraineurs: number };
+  entraineurs?: Array<{ entraineur: { userId: string } }>;
 }
 
-export interface EquipeDetail extends Omit<Equipe, '_count'> {
+export interface EquipeDetail extends Omit<Equipe, '_count' | 'entraineurs'> {
   joueurs: Array<{
     joueurId: string;
     equipeId: string;
@@ -65,6 +67,7 @@ export interface EquipeDetail extends Omit<Equipe, '_count'> {
     equipeId: string;
     entraineur: {
       id: string;
+      userId: string;
       firstName: string;
       lastName: string;
       photoUrl?: string | null;
@@ -102,38 +105,41 @@ export interface Evenement {
   type: TypeEvenement;
   equipeId: string;
   dateHeure: string;
+  duree: number;
+  annule: boolean;
   lieu?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   description?: string | null;
   equipe?: Pick<Equipe, 'id' | 'nomEquipe'> & { categorie?: Pick<Categorie, 'nom'> };
-  match?: Match;
-  entrainement?: Entrainement;
-}
-
-export interface Match {
-  id: string;
-  equipesDomId: string;
-  equipesExtId: string;
+  // Champs match
+  adversaire?: string | null;
   scoreDom?: number | null;
   scoreExt?: number | null;
-  statut: StatutMatch;
+  statutMatch?: StatutMatch | null;
   placesCovoiturage?: number | null;
-  equipeDom?: Pick<Equipe, 'id' | 'nomEquipe'>;
-  equipeExt?: Pick<Equipe, 'id' | 'nomEquipe'>;
+  // Champs entraînement
+  categorieId?: string | null;
+  // Snapshot : true une fois la liste d'appel figée
+  snapshotPris?: boolean;
+  // Relations
   buts?: But[];
-  convocations?: ConvocationMatch[];
+  presences?: Presence[];
 }
 
-export interface Entrainement {
-  id: string;
-  categorieId?: string | null;
-  presences?: PresenceEntrainement[];
+export interface Presence {
+  evenementId: string;
+  joueurId: string;
+  statut: StatutPresence;
+  note?: number | null;
+  buts?: number | null;
+  commentaire?: string | null;
+  joueur?: Pick<Joueur, 'id' | 'firstName' | 'lastName' | 'photoUrl'>;
 }
 
 export interface But {
   id: string;
-  matchId: string;
+  evenementId: string;
   buteurId: string;
   passeurId?: string | null;
   minute?: number | null;
@@ -142,23 +148,6 @@ export interface But {
   estCSC: boolean;
   buteur?: Pick<Joueur, 'id' | 'firstName' | 'lastName'>;
   passeur?: Pick<Joueur, 'id' | 'firstName' | 'lastName'> | null;
-}
-
-export interface PresenceEntrainement {
-  entrainementId: string;
-  joueurId: string;
-  statut: StatutPresence;
-  commentaire?: string | null;
-  joueur?: Pick<Joueur, 'id' | 'firstName' | 'lastName' | 'photoUrl'>;
-}
-
-export interface ConvocationMatch {
-  matchId: string;
-  joueurId: string;
-  note?: number | null;
-  commentaire?: string | null;
-  estAccompagnateur: boolean;
-  joueur?: Pick<Joueur, 'id' | 'firstName' | 'lastName' | 'photoUrl'>;
 }
 
 export interface Actualite {
@@ -213,7 +202,8 @@ export const POSTE_LABELS: Record<Poste, string> = {
 
 export const STATUT_PRESENCE_LABELS: Record<StatutPresence, string> = {
   PRESENT: 'Présent',
-  ABSENT_JUSTIFIE: 'Absent justifié',
-  ABSENT_NON_JUSTIFIE: 'Absent non justifié',
-  RETARD: 'Retard',
+  ABSENT_JUSTIFIE: 'Absence justifiée',
+  ABSENT_NON_JUSTIFIE: 'Absent',
+  RETARD: 'En retard',
+  BLESSE: 'Blessé',
 };

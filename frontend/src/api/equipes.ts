@@ -22,7 +22,7 @@ export async function createEquipe(payload: {
 
 export async function updateEquipe(
   id: string,
-  payload: Partial<{ nomEquipe: string; niveauChampionnat: string }>
+  payload: Partial<{ nomEquipe: string; niveauChampionnat: string; categorieId: string }>
 ): Promise<Equipe> {
   const { data } = await client.put<Equipe>(`/equipes/${id}`, payload);
   return data;

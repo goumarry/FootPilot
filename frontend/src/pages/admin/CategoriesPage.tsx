@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
+import Dialog, { type DialogConfig } from '@/components/ui/Dialog';
 import EmptyState from '@/components/ui/EmptyState';
 
 export default function CategoriesPage() {
@@ -18,6 +19,7 @@ export default function CategoriesPage() {
   const [nom, setNom] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,16 +69,27 @@ export default function CategoriesPage() {
     }
   }
 
-  async function handleDelete(cat: Categorie) {
-    if (!confirm(t('categories.deleteConfirm').replace('{name}', cat.nom))) return;
+  function confirmDelete(cat: Categorie) {
+    setDialog({
+      title: t('categories.deleteConfirm').replace('{name}', cat.nom),
+      message: '',
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      onConfirm: () => executeDelete(cat),
+    });
+  }
+
+  async function executeDelete(cat: Categorie) {
+    setDialog(null);
     try {
       await deleteCategorie(cat.id);
       setCategories((prev) => prev.filter((c) => c.id !== cat.id));
     } catch (err: unknown) {
-      alert(
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          t('categories.deleteError')
-      );
+      setDialog({
+        message: (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          t('categories.deleteError'),
+        variant: 'warning',
+      });
     }
   }
 
@@ -134,7 +147,7 @@ export default function CategoriesPage() {
                   <Pencil size={15} />
                 </button>
                 <button
-                  onClick={() => handleDelete(cat)}
+                  onClick={() => confirmDelete(cat)}
                   className="text-slate-500 hover:text-red-400 transition-colors p-1"
                 >
                   <Trash2 size={15} />
@@ -144,6 +157,16 @@ export default function CategoriesPage() {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={!!dialog}
+        title={dialog?.title}
+        message={dialog?.message ?? ''}
+        variant={dialog?.variant}
+        confirmLabel={dialog?.confirmLabel}
+        onConfirm={dialog?.onConfirm}
+        onClose={() => setDialog(null)}
+      />
 
       <Modal
         open={showModal}

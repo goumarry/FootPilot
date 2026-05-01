@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Newspaper, User, Shield, Trophy } from 'lucide-react';
+import { LayoutDashboard, Calendar, Newspaper, Shield, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { clsx } from '@/lib/clsx';
@@ -12,23 +12,23 @@ export default function BottomNav() {
   const itemsByRole: Record<string, Array<{ to: string; icon: React.ElementType; labelKey: string; end?: boolean }>> = {
     GESTIONNAIRE: [
       { to: '/admin', icon: LayoutDashboard, labelKey: 'nav.home', end: true },
-      { to: '/admin/joueurs', icon: User, labelKey: 'nav.players' },
       { to: '/admin/planning', icon: Calendar, labelKey: 'nav.planning' },
+      { to: '/admin/matchs', icon: Trophy, labelKey: 'nav.matchs' },
+      { to: '/admin/entrainements', icon: Shield, labelKey: 'nav.entrainements' },
       { to: '/admin/actualites', icon: Newspaper, labelKey: 'nav.actus' },
-      { to: '/admin/equipes', icon: Shield, labelKey: 'nav.teams' },
     ],
     ENTRAINEUR: [
       { to: '/admin', icon: LayoutDashboard, labelKey: 'nav.home', end: true },
-      { to: '/admin/joueurs', icon: User, labelKey: 'nav.players' },
-      { to: '/admin/equipes', icon: Shield, labelKey: 'nav.teams' },
       { to: '/admin/planning', icon: Calendar, labelKey: 'nav.planning' },
+      { to: '/admin/matchs', icon: Trophy, labelKey: 'nav.matchs' },
+      { to: '/admin/entrainements', icon: Shield, labelKey: 'nav.entrainements' },
       { to: '/admin/actualites', icon: Newspaper, labelKey: 'nav.actus' },
     ],
     JOUEUR: [
       { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.home', end: true },
       { to: '/dashboard/planning', icon: Calendar, labelKey: 'nav.planning' },
-      { to: '/dashboard/actualites', icon: Newspaper, labelKey: 'nav.actus' },
-      { to: '/dashboard/stats', icon: Trophy, labelKey: 'nav.stats' },
+      { to: '/dashboard/matchs', icon: Trophy, labelKey: 'nav.matchs' },
+      { to: '/dashboard/entrainements', icon: Shield, labelKey: 'nav.entrainements' },
     ],
   };
 

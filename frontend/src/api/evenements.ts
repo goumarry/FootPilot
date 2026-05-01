@@ -1,10 +1,11 @@
 import client from './client';
-import type { Evenement } from '@/types';
+import type { Evenement, Presence } from '@/types';
 
 export async function getEvenements(params?: {
   equipeId?: string;
   from?: string;
   to?: string;
+  type?: 'MATCH' | 'ENTRAINEMENT';
 }): Promise<Evenement[]> {
   const { data } = await client.get<Evenement[]>('/evenements', { params });
   return data;
@@ -33,20 +34,26 @@ export async function deleteEvenement(id: string): Promise<void> {
 }
 
 export async function saisirScore(
-  matchId: string,
+  evenementId: string,
   payload: { scoreDom: number; scoreExt: number }
 ): Promise<void> {
-  await client.put(`/matchs/${matchId}/score`, payload);
+  await client.put(`/evenements/${evenementId}/score`, payload);
+}
+
+export async function getAppel(evenementId: string): Promise<Presence[]> {
+  const { data } = await client.get<Presence[]>(`/evenements/${evenementId}/appel`);
+  return data;
 }
 
 export async function saisirAppel(
-  entrainementId: string,
-  presences: Array<{ joueurId: string; statut: string; commentaire?: string }>
+  evenementId: string,
+  presences: Array<{
+    joueurId: string;
+    statut: string;
+    note?: number | null;
+    buts?: number | null;
+    commentaire?: string;
+  }>
 ): Promise<void> {
-  await client.post(`/entrainements/${entrainementId}/appel`, { presences });
-}
-
-export async function getAppel(entrainementId: string) {
-  const { data } = await client.get(`/entrainements/${entrainementId}/appel`);
-  return data;
+  await client.post(`/evenements/${evenementId}/appel`, { presences });
 }

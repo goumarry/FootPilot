@@ -5,89 +5,116 @@ import { verifyToken } from '../middleware/auth';
 const router = Router();
 router.use(verifyToken);
 
-// GET /api/statistiques/joueurs/:id
-router.get('/joueurs/:id', async (req, res) => {
-  const joueur = await prisma.joueur.findUnique({
-    where: { id: req.params.id },
-    include: {
-      user: { select: { firstName: true, lastName: true } },
-      butsMarques: {
-        include: { match: { include: { evenement: { select: { dateHeure: true } } } } },
-      },
-      butsPasses: true,
-      presences: true,
-      convocations: true,
-    },
-  });
-  if (!joueur) return res.status(404).json({ message: 'Joueur introuvable.' });
+const joueurStatsInclude = {
+  user: { select: { firstName: true, lastName: true } },
+  butsMarques: { select: { estCSC: true } },
+  butsPasses: { select: { id: true } },
+  presences: {
+    include: { evenement: { select: { type: true } } },
+  },
+} as const;
+
+type PresenceRow = { statut: string; note: number | null; buts: number | null; evenement: { type: string } };
+
+function noteAvg(presences: PresenceRow[]): number | null {
+  const noted = presences.filter((p) => p.note !== null && p.note >= 1);
+  if (noted.length === 0) return null;
+  return Math.round((noted.reduce((s, p) => s + (p.note ?? 0), 0) / noted.length) * 10) / 10;
+}
+
+function countBy(presences: PresenceRow[], statut: string): number {
+  return presences.filter((p) => p.statut === statut).length;
+}
+
+function computeStats(joueur: {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  poste: string | null;
+  user?: { firstName: string; lastName: string } | null;
+  butsMarques: Array<{ estCSC: boolean }>;
+  butsPasses: unknown[];
+  presences: PresenceRow[];
+}) {
+  const training = joueur.presences.filter((p) => p.evenement.type === 'ENTRAINEMENT');
+  const matchs = joueur.presences.filter((p) => p.evenement.type === 'MATCH');
 
   const buts = joueur.butsMarques.filter((b) => !b.estCSC).length;
   const passes = joueur.butsPasses.length;
   const cscs = joueur.butsMarques.filter((b) => b.estCSC).length;
-  const matchsJoues = joueur.convocations.length;
-  const totalPresences = joueur.presences.length;
-  const presents = joueur.presences.filter((p) => p.statut === 'PRESENT').length;
-  const assiduite = totalPresences > 0 ? Math.round((presents / totalPresences) * 100) : null;
 
-  return res.json({
+  return {
     joueur: {
       id: joueur.id,
       firstName: joueur.user?.firstName ?? joueur.firstName ?? '',
       lastName: joueur.user?.lastName ?? joueur.lastName ?? '',
       poste: joueur.poste,
     },
-    buts,
-    passes,
-    cscs,
-    matchsJoues,
-    presences: totalPresences,
-    assiduite,
+    entrainements: {
+      total: training.length,
+      present: countBy(training, 'PRESENT'),
+      absentNonJustifie: countBy(training, 'ABSENT_NON_JUSTIFIE'),
+      absentJustifie: countBy(training, 'ABSENT_JUSTIFIE'),
+      retard: countBy(training, 'RETARD'),
+      blesse: countBy(training, 'BLESSE'),
+      noteMoyenne: noteAvg(training),
+    },
+    matchs: {
+      total: matchs.length,
+      present: countBy(matchs, 'PRESENT'),
+      absentNonJustifie: countBy(matchs, 'ABSENT_NON_JUSTIFIE'),
+      absentJustifie: countBy(matchs, 'ABSENT_JUSTIFIE'),
+      retard: countBy(matchs, 'RETARD'),
+      blesse: countBy(matchs, 'BLESSE'),
+      noteMoyenne: noteAvg(matchs),
+      butsMarques: buts,
+      butsParMatch: matchs.length > 0 ? Math.round((buts / matchs.length) * 100) / 100 : null,
+      passes,
+      cscs,
+    },
+  };
+}
+
+// GET /api/statistiques/joueurs/moi — stats du joueur connecté
+router.get('/joueurs/moi', async (req, res) => {
+  const joueur = await prisma.joueur.findFirst({
+    where: { userId: req.user!.userId },
+    include: joueurStatsInclude,
   });
+  if (!joueur) return res.status(404).json({ message: 'Aucun profil joueur associé à votre compte.' });
+  return res.json(computeStats(joueur));
+});
+
+// GET /api/statistiques/joueurs/:id
+router.get('/joueurs/:id', async (req, res) => {
+  const joueur = await prisma.joueur.findUnique({
+    where: { id: req.params.id },
+    include: joueurStatsInclude,
+  });
+  if (!joueur) return res.status(404).json({ message: 'Joueur introuvable.' });
+  return res.json(computeStats(joueur));
 });
 
 // GET /api/statistiques/equipes/:id
 router.get('/equipes/:id', async (req, res) => {
-  const equipe = await prisma.equipe.findUnique({
-    where: { id: req.params.id },
-    include: {
-      evenements: {
-        where: { type: 'MATCH' },
-        include: { match: true },
-      },
-    },
+  const evenements = await prisma.evenement.findMany({
+    where: { equipeId: req.params.id, type: 'MATCH' },
   });
-  if (!equipe) return res.status(404).json({ message: 'Équipe introuvable.' });
 
-  const matchsTermines = equipe.evenements.filter(
-    (e) => e.match?.statut === 'TERMINE' && e.match.scoreDom !== null
+  const matchsTermines = evenements.filter(
+    (e) => e.statutMatch === 'TERMINE' && e.scoreDom !== null
   );
 
-  let victoires = 0;
-  let defaites = 0;
-  let nuls = 0;
-  let butsMarques = 0;
-  let butsEncaisses = 0;
-
-  for (const e of matchsTermines) {
-    const m = e.match!;
-    const dom = m.scoreDom ?? 0;
-    const ext = m.scoreExt ?? 0;
-    const isDom = m.equipesDomId === req.params.id;
-
-    butsMarques += isDom ? dom : ext;
-    butsEncaisses += isDom ? ext : dom;
-
-    const score = isDom ? dom - ext : ext - dom;
-    if (score > 0) victoires++;
-    else if (score < 0) defaites++;
-    else nuls++;
-  }
-
+  const victoires = matchsTermines.filter((e) => (e.scoreDom ?? 0) > (e.scoreExt ?? 0)).length;
+  const defaites = matchsTermines.filter((e) => (e.scoreDom ?? 0) < (e.scoreExt ?? 0)).length;
+  const nuls = matchsTermines.filter((e) => (e.scoreDom ?? 0) === (e.scoreExt ?? 0)).length;
+  const butsMarques = matchsTermines.reduce((sum, e) => sum + (e.scoreDom ?? 0), 0);
+  const butsEncaisses = matchsTermines.reduce((sum, e) => sum + (e.scoreExt ?? 0), 0);
   const total = victoires + defaites + nuls;
   const winrate = total > 0 ? Math.round((victoires / total) * 100) : null;
 
   return res.json({
-    equipe: { id: equipe.id, nomEquipe: equipe.nomEquipe },
+    equipe: { id: req.params.id },
     matchsJoues: total,
     victoires,
     defaites,
@@ -103,9 +130,7 @@ router.get('/clubs/:id', async (req, res) => {
   const club = await prisma.club.findUnique({
     where: { id: req.params.id },
     include: {
-      _count: {
-        select: { categories: true, equipes: true, joueurs: true, users: true },
-      },
+      _count: { select: { categories: true, equipes: true, joueurs: true, users: true } },
     },
   });
   if (!club) return res.status(404).json({ message: 'Club introuvable.' });

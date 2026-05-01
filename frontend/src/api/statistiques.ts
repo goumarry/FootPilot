@@ -1,5 +1,10 @@
 import client from './client';
 
+export async function getMyStats() {
+  const { data } = await client.get('/statistiques/joueurs/moi');
+  return data;
+}
+
 export async function getStatsJoueur(id: string) {
   const { data } = await client.get(`/statistiques/joueurs/${id}`);
   return data;

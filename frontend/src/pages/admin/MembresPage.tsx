@@ -7,6 +7,7 @@ import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
+import Dialog, { type DialogConfig } from '@/components/ui/Dialog';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { RoleBadge, StatusBadge } from '@/components/ui/Badge';
@@ -43,6 +44,7 @@ export default function MembresPage() {
   const [codeForm, setCodeForm] = useState({ role: 'JOUEUR' as 'ENTRAINEUR' | 'JOUEUR', expiresInHours: 24 });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -111,16 +113,30 @@ export default function MembresPage() {
     }
   }
 
-  async function handleDeleteInvitation(id: string) {
-    if (!confirm(t('members.deleteInvite'))) return;
-    await deleteInvitation(id);
-    setInvitations((prev) => prev.filter((i) => i.id !== id));
+  function handleDeleteInvitation(id: string) {
+    setDialog({
+      message: t('members.deleteInvite'),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      onConfirm: async () => {
+        setDialog(null);
+        await deleteInvitation(id);
+        setInvitations((prev) => prev.filter((i) => i.id !== id));
+      },
+    });
   }
 
-  async function handleDeleteCode(id: string) {
-    if (!confirm(t('members.deleteCode'))) return;
-    await deleteJoinCode(id);
-    setJoinCodes((prev) => prev.filter((c) => c.id !== id));
+  function handleDeleteCode(id: string) {
+    setDialog({
+      message: t('members.deleteCode'),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      onConfirm: async () => {
+        setDialog(null);
+        await deleteJoinCode(id);
+        setJoinCodes((prev) => prev.filter((c) => c.id !== id));
+      },
+    });
   }
 
   async function handleToggleActive(userId: string, current: boolean) {
@@ -331,6 +347,16 @@ export default function MembresPage() {
           <Button full onClick={handleCreateCode} loading={saving}>{t('members.generateCode')}</Button>
         </div>
       </Modal>
+
+      <Dialog
+        open={!!dialog}
+        title={dialog?.title}
+        message={dialog?.message ?? ''}
+        variant={dialog?.variant}
+        confirmLabel={dialog?.confirmLabel}
+        onConfirm={dialog?.onConfirm}
+        onClose={() => setDialog(null)}
+      />
     </AppLayout>
   );
 }

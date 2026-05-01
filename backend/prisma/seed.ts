@@ -6,14 +6,12 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding FootPilot database...');
 
-  // ── Club test ─────────────────────────────────────────────────────────────
   const clubExists = await prisma.club.findFirst({ where: { nom: 'AS FootPilot FC' } });
   if (clubExists) {
     console.log('ℹ️  Club test déjà présent, skip.');
     return;
   }
 
-  // Club
   const club = await prisma.club.create({
     data: {
       nom: 'AS FootPilot FC',
@@ -22,7 +20,6 @@ async function main() {
     },
   });
 
-  // Gestionnaire
   const gestionnaire = await prisma.user.create({
     data: {
       email: 'gestionnaire@footpilot.fr',
@@ -34,13 +31,11 @@ async function main() {
     },
   });
 
-  // Catégories
   const [catSeniors, catU17] = await Promise.all([
     prisma.categorie.create({ data: { clubId: club.id, nom: 'Seniors' } }),
     prisma.categorie.create({ data: { clubId: club.id, nom: 'U17' } }),
   ]);
 
-  // Équipes
   const equipeA = await prisma.equipe.create({
     data: {
       clubId: club.id,
@@ -50,7 +45,7 @@ async function main() {
     },
   });
 
-  const equipeU17 = await prisma.equipe.create({
+  await prisma.equipe.create({
     data: {
       clubId: club.id,
       categorieId: catU17.id,
@@ -59,7 +54,6 @@ async function main() {
     },
   });
 
-  // Entraîneur — le nom vient du User, pas du profil Entraineur
   const entraineurUser = await prisma.user.create({
     data: {
       email: 'entraineur@footpilot.fr',
@@ -72,19 +66,13 @@ async function main() {
   });
 
   const entraineur = await prisma.entraineur.create({
-    data: {
-      userId: entraineurUser.id,
-      clubId: club.id,
-      phone: '0600000001',
-    },
+    data: { userId: entraineurUser.id, clubId: club.id, phone: '0600000001' },
   });
 
-  // Assigner entraîneur à équipeA
   await prisma.entraineurEquipe.create({
     data: { entraineurId: entraineur.id, equipeId: equipeA.id },
   });
 
-  // Joueurs — le nom vient du User pour les joueurs avec compte
   const joueursData = [
     { firstName: 'Lucas', lastName: 'Martin', poste: Poste.ATT, numero: 9 },
     { firstName: 'Thomas', lastName: 'Petit', poste: Poste.MIL, numero: 8 },
@@ -106,7 +94,6 @@ async function main() {
         },
       });
 
-      // Pas de firstName/lastName sur Joueur — vient du User via userId
       return prisma.joueur.create({
         data: {
           userId: userJoueur.id,
@@ -119,33 +106,25 @@ async function main() {
     })
   );
 
-  // Assigner joueurs à équipeA
   await Promise.all(
     joueurs.map((j) =>
       prisma.joueurEquipe.create({ data: { joueurId: j.id, equipeId: equipeA.id } })
     )
   );
 
-  // Événements — un match à venir + un entraînement passé
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 7);
   tomorrow.setHours(15, 0, 0, 0);
 
-  const matchEv = await prisma.evenement.create({
+  await prisma.evenement.create({
     data: {
       type: 'MATCH',
       equipeId: equipeA.id,
       dateHeure: tomorrow,
       lieu: 'Stade Gerland, Lyon',
       description: 'Championnat Régional 2 — Journée 12',
-    },
-  });
-
-  await prisma.match.create({
-    data: {
-      id: matchEv.id,
-      equipesDomId: equipeA.id,
-      equipesExtId: equipeU17.id,
+      adversaire: 'AS Bron FC',
+      statutMatch: 'AVENIR',
       placesCovoiturage: 5,
     },
   });
@@ -154,7 +133,7 @@ async function main() {
   lastWeek.setDate(lastWeek.getDate() - 3);
   lastWeek.setHours(19, 0, 0, 0);
 
-  const trainEv = await prisma.evenement.create({
+  await prisma.evenement.create({
     data: {
       type: 'ENTRAINEMENT',
       equipeId: equipeA.id,
@@ -164,9 +143,6 @@ async function main() {
     },
   });
 
-  await prisma.entrainement.create({ data: { id: trainEv.id } });
-
-  // Actualité de bienvenue
   await prisma.actualite.create({
     data: {
       auteurId: gestionnaire.id,

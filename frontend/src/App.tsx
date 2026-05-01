@@ -13,7 +13,6 @@ import CreateClubPage from '@/pages/CreateClubPage';
 // Gestionnaire
 import AdminDashboardPage from '@/pages/admin/DashboardPage';
 import MembresPage from '@/pages/admin/MembresPage';
-import CategoriesPage from '@/pages/admin/CategoriesPage';
 import EquipesPage from '@/pages/admin/EquipesPage';
 import EquipeDetailPage from '@/pages/admin/EquipeDetailPage';
 import ClubPage from '@/pages/admin/ClubPage';
@@ -21,11 +20,15 @@ import JoinPage from '@/pages/JoinPage';
 import ProfilePage from '@/pages/ProfilePage';
 import JoueursPage from '@/pages/admin/JoueursPage';
 import PlanningAdminPage from '@/pages/admin/PlanningPage';
+import MatchsAdminPage from '@/pages/admin/MatchsPage';
+import EntrainementsAdminPage from '@/pages/admin/EntrainementsPage';
 import ActualitesAdminPage from '@/pages/admin/ActualitesPage';
 
 // Dashboard (Joueur / Entraîneur)
 import DashboardPage from '@/pages/DashboardPage';
 import PlanningPage from '@/pages/dashboard/PlanningPage';
+import MatchsPage from '@/pages/dashboard/MatchsPage';
+import EntrainementsPage from '@/pages/dashboard/EntrainementsPage';
 import ActualitesPage from '@/pages/dashboard/ActualitesPage';
 import StatsPage from '@/pages/dashboard/StatsPage';
 import EquipesPageDash from '@/pages/dashboard/EquipesPage';
@@ -69,14 +72,6 @@ export default function App() {
             }
           />
           <Route
-            path="/admin/categories"
-            element={
-              <RequireAuth roles={[...COACH_ROLES]}>
-                <CategoriesPage />
-              </RequireAuth>
-            }
-          />
-          <Route
             path="/admin/equipes"
             element={
               <RequireAuth roles={[...COACH_ROLES]}>
@@ -105,6 +100,22 @@ export default function App() {
             element={
               <RequireAuth roles={[...COACH_ROLES]}>
                 <PlanningAdminPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/matchs"
+            element={
+              <RequireAuth roles={[...COACH_ROLES]}>
+                <MatchsAdminPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/entrainements"
+            element={
+              <RequireAuth roles={[...COACH_ROLES]}>
+                <EntrainementsAdminPage />
               </RequireAuth>
             }
           />
@@ -139,6 +150,22 @@ export default function App() {
             element={
               <RequireAuth roles={[...ALL_ROLES]}>
                 <PlanningPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/dashboard/matchs"
+            element={
+              <RequireAuth roles={[...ALL_ROLES]}>
+                <MatchsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/dashboard/entrainements"
+            element={
+              <RequireAuth roles={[...ALL_ROLES]}>
+                <EntrainementsPage />
               </RequireAuth>
             }
           />

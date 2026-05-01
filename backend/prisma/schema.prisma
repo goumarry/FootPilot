@@ -36,6 +36,7 @@ enum StatutPresence {
   ABSENT_JUSTIFIE
   ABSENT_NON_JUSTIFIE
   RETARD
+  BLESSE
 }
 
 enum ZoneTir {
@@ -119,9 +120,9 @@ model Categorie {
   clubId String
   nom    String
 
-  club          Club           @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  equipes       Equipe[]
-  entrainements Entrainement[]
+  club       Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  equipes    Equipe[]
+  evenements Evenement[]
 }
 
 model Equipe {
@@ -137,8 +138,6 @@ model Equipe {
   joueurs     JoueurEquipe[]
   entraineurs EntraineurEquipe[]
   evenements  Evenement[]
-  matchsDom   Match[]            @relation("MatchDomicile")
-  matchsExt   Match[]            @relation("MatchExterieur")
   actualites  Actualite[]
 }
 
@@ -158,11 +157,10 @@ model Joueur {
   user  User?  @relation(fields: [userId], references: [id])
   club  Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
-  equipes      JoueurEquipe[]
-  presences    PresenceEntrainement[]
-  convocations ConvocationMatch[]
-  butsMarques  But[]                  @relation("ButsMarques")
-  butsPasses   But[]                  @relation("ButsPasses")
+  equipes     JoueurEquipe[]
+  presences   Presence[]
+  butsMarques But[]      @relation("ButsMarques")
+  butsPasses  But[]      @relation("ButsPasses")
 }
 
 // firstName/lastName sont supprimés car Entraineur a toujours un userId — utiliser user.firstName/lastName.
@@ -205,72 +203,50 @@ model Evenement {
   type        TypeEvenement
   equipeId    String
   dateHeure   DateTime
+  duree       Int           @default(120)
+  annule      Boolean       @default(false)
   lieu        String?
   latitude    Float?
   longitude   Float?
   description String?
   createdAt   DateTime      @default(now())
 
-  equipe       Equipe        @relation(fields: [equipeId], references: [id], onDelete: Cascade)
-  match        Match?
-  entrainement Entrainement?
-}
-
-model Match {
-  id                String      @id
-  equipesDomId      String
-  equipesExtId      String
+  // Champs spécifiques aux matchs (null pour entraînements)
+  adversaire        String?
   scoreDom          Int?
   scoreExt          Int?
-  statut            StatutMatch @default(AVENIR)
-  placesCovoiturage Int?        @default(0)
+  statutMatch       StatutMatch?
+  placesCovoiturage Int?
 
-  evenement Evenement @relation(fields: [id], references: [id], onDelete: Cascade)
-  equipeDom Equipe    @relation("MatchDomicile", fields: [equipesDomId], references: [id])
-  equipeExt Equipe    @relation("MatchExterieur", fields: [equipesExtId], references: [id])
+  // Champs spécifiques aux entraînements (null pour matchs)
+  categorieId  String?
 
-  buts         But[]
-  convocations ConvocationMatch[]
+  // Snapshot : true dès que la liste d'appel a été figée (premier accès après début de l'événement)
+  snapshotPris Boolean @default(false)
+
+  equipe    Equipe      @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  categorie Categorie?  @relation(fields: [categorieId], references: [id])
+  buts      But[]
+  presences Presence[]
 }
 
-model Entrainement {
-  id          String  @id
-  categorieId String?
+model Presence {
+  evenementId String
+  joueurId    String
+  statut      StatutPresence
+  note        Int?
+  buts        Int?
+  commentaire String?
 
-  evenement Evenement  @relation(fields: [id], references: [id], onDelete: Cascade)
-  categorie Categorie? @relation(fields: [categorieId], references: [id])
+  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  joueur    Joueur    @relation(fields: [joueurId], references: [id], onDelete: Cascade)
 
-  presences PresenceEntrainement[]
-}
-
-model PresenceEntrainement {
-  entrainementId String
-  joueurId       String
-  statut         StatutPresence
-  commentaire    String?
-
-  entrainement Entrainement @relation(fields: [entrainementId], references: [id], onDelete: Cascade)
-  joueur       Joueur       @relation(fields: [joueurId], references: [id], onDelete: Cascade)
-
-  @@id([entrainementId, joueurId])
-}
-
-model ConvocationMatch {
-  matchId           String
-  joueurId          String
-  note              Int?
-  commentaire       String?
-  estAccompagnateur Boolean @default(false)
-
-  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  joueur Joueur @relation(fields: [joueurId], references: [id], onDelete: Cascade)
-
-  @@id([matchId, joueurId])
+  @@id([evenementId, joueurId])
 }
 
 model But {
   id           String        @id @default(cuid())
-  matchId      String
+  evenementId  String
   buteurId     String
   passeurId    String?
   minute       Int?
@@ -278,9 +254,9 @@ model But {
   circonstance Circonstance?
   estCSC       Boolean       @default(false)
 
-  match   Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  buteur  Joueur  @relation("ButsMarques", fields: [buteurId], references: [id])
-  passeur Joueur? @relation("ButsPasses", fields: [passeurId], references: [id])
+  evenement Evenement @relation(fields: [evenementId], references: [id], onDelete: Cascade)
+  buteur    Joueur    @relation("ButsMarques", fields: [buteurId], references: [id])
+  passeur   Joueur?   @relation("ButsPasses", fields: [passeurId], references: [id])
 }
 
 model Actualite {
@@ -293,7 +269,7 @@ model Actualite {
   createdAt DateTime @default(now())
 
   auteur User    @relation("ActualiteAuteur", fields: [auteurId], references: [id])
-  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  club   Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
   equipe Equipe? @relation(fields: [equipeId], references: [id])
 }
 

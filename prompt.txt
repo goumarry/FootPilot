@@ -1,35 +1,33 @@
-Nous devons réorienter le développement suite à un changement de stratégie sur la gestion des adresses et de la localisation. Voici les nouvelles instructions :
+Refactoring UI/UX : Fusion de /categories et /equipes
 
-1. Gestion des Adresses (France uniquement) :
+Nouvelle vue unifiée : Fusionner les deux pages. Afficher les catégories sous forme de cards.
 
-Abandon : Ne plus utiliser Google Cloud Places API (trop coûteux). Corrige ou supprime le code qui avait prévu son utlisation. On veut un code ultra CLEAN
+Hiérarchie visuelle : Afficher les équipes rattachées sous leur catégorie respective, avec une légère indentation vers la droite (sous forme de cards également).
 
-Alternative : Implémenter l'autocomplétion des adresses en utilisant l'API gratuite du gouvernement français (API Adresse : https://api-adresse.data.gouv.fr/search/).
+Création simplifiée (Bouton +) : Supprimer le champ de sélection de catégorie dans le formulaire de création d'équipe. À la place, ajouter un bouton "+" directement sur la carte de la catégorie : le clic ouvre le formulaire et assigne automatiquement l'équipe à cette catégorie. Mettre à jour les formulaires de création et d'édition en conséquence.
 
-Condition : Ce système d'autocomplétion ne doit s'activer que si la langue sélectionnée par l'utilisateur est le Français.
+Drag & Drop : Permettre le glisser-déposer (drag and drop) des équipes pour les déplacer facilement d'une catégorie à une autre en cas d'erreur.
 
-Fallback (Autres langues) : Si l'appli est en Anglais, Espagnol, Allemand, Italien, Mandarin ou Arabe, l'utilisateur saisit l'adresse manuellement dans un champ texte standard.
+Modale d'ajout de membres : Actuellement, la fenêtre (modale) se ferme après chaque ajout d'un joueur ou entraîneur. La modifier pour qu'elle reste ouverte. Ajouter également une barre de recherche/filtre sur le nom et prénom.
 
-Action post-enregistrement : Une fois l'événement créé, l'adresse doit être affichée comme un lien cliquable redirigeant vers Google Maps (https://www.google.com/maps/search/?api=1&query=[adresse_encodée]). et la map affichée directement si langue == fr
+Règles Métier & Gestion des Rôles (Permissions)
 
-2. Système d'Internationalisation (i18n) :
+Création de Catégories : Seuls les utilisateurs avec le grade Gestionnaire peuvent créer une catégorie.
 
-Mettre en place une architecture robuste pour le support multilingue.
+Nouveau rôle "Gestionnaire" (Entraîneur ++) :
 
-Langues à supporter : Français (FR), Anglais (EN), Espagnol (ES), Allemand (DE), Italien (IT), Mandarin (ZH), Arabe (AR).
+Peut s'ajouter lui-même dans n'importe quelle équipe en tant qu'entraîneur.
 
-Créer les fichiers de traduction nécessaires (ex: fr.json, en.json, etc.).
+Peut retirer n'importe quel entraîneur (ou tous les entraîneurs) d'une équipe.
 
-Le système doit permettre de basculer dynamiquement d'une langue à l'autre.
+Rôle "Entraîneur" (Standard) :
 
-L'interface de création d'événement doit adapter ses champs (autocomplétion vs saisie manuelle) en fonction de la locale active.
+Ne peut TOUJOURS PAS s'ajouter lui-même à une équipe si celle-ci a déjà un entraîneur ou un gestionnaire assigné.
 
-3. Livrables attendus :
+Assignation automatique : Lorsqu'un gestionnaire ou un entraîneur crée une nouvelle équipe, il y est automatiquement assigné en tant qu'entraîneur.
 
-Mise à jour du composant de création d'événement.
+Instructions de Code
 
-Configuration de la bibliothèque i18n.
+Appliquer les principes du Clean Code.
 
-Logique de détection de la langue pour l'activation du service d'adresse.
-
-Nettoyage des anciennes dépendances liées à Google Cloud API.
+Nettoyer scrupuleusement le code mort (supprimer les anciens composants, fonctions et états qui ne sont plus utilisés suite à cette fusion).

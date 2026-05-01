@@ -1,17 +1,66 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { getJoueurs, createJoueur, updateJoueur, deleteJoueur } from '@/api/joueurs';
+import { getStatsJoueur } from '@/api/statistiques';
 import type { Joueur, Poste } from '@/types';
+import type { JoueurStatsData } from '@/components/ui/PlayerStatsView';
 import { useI18n } from '@/contexts/I18nContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
+import Dialog, { type DialogConfig } from '@/components/ui/Dialog';
 import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
+import { PlayerStatsView } from '@/components/ui/PlayerStatsView';
 
 const POSTES: Poste[] = ['GB', 'DEF', 'MIL', 'ATT'];
+
+const posteColors: Record<string, 'violet' | 'blue' | 'green' | 'yellow'> = {
+  GB: 'yellow',
+  DEF: 'blue',
+  MIL: 'green',
+  ATT: 'violet',
+};
+
+function JoueurStatsModal({ joueur, onClose }: { joueur: Joueur; onClose: () => void }) {
+  const { t } = useI18n();
+  const [stats, setStats] = useState<JoueurStatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getStatsJoueur(joueur.id)
+      .then(setStats)
+      .catch(() => setError(t('stats.loadError')))
+      .finally(() => setLoading(false));
+  }, [joueur.id]);
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`${joueur.firstName} ${joueur.lastName}`}
+      size="lg"
+    >
+      <div className="mb-3 flex items-center gap-2 flex-wrap">
+        {joueur.poste && <Badge variant={posteColors[joueur.poste]}>{t(`postes.${joueur.poste}`)}</Badge>}
+        {joueur.numeroMaillot && (
+          <span className="text-xs text-slate-500">#{joueur.numeroMaillot}</span>
+        )}
+        <span className="text-xs text-slate-500">{new Date(joueur.birthDate).toLocaleDateString()}</span>
+      </div>
+      {loading ? (
+        <div className="text-center py-10 text-slate-500 text-sm">{t('common.loading')}</div>
+      ) : error || !stats ? (
+        <div className="text-center py-10 text-slate-500 text-sm">{t('stats.noProfile')}</div>
+      ) : (
+        <PlayerStatsView stats={stats} />
+      )}
+    </Modal>
+  );
+}
 
 export default function JoueursPage() {
   const { t } = useI18n();
@@ -29,6 +78,8 @@ export default function JoueursPage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [dialog, setDialog] = useState<DialogConfig | null>(null);
+  const [statsJoueur, setStatsJoueur] = useState<Joueur | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,7 +96,8 @@ export default function JoueursPage() {
     setShowModal(true);
   }
 
-  function openEdit(j: Joueur) {
+  function openEdit(e: React.MouseEvent, j: Joueur) {
+    e.stopPropagation();
     setEditing(j);
     setForm({
       firstName: j.firstName,
@@ -91,23 +143,25 @@ export default function JoueursPage() {
     }
   }
 
-  async function handleDelete(j: Joueur) {
-    if (!confirm(t('players.deleteConfirm').replace('{name}', `${j.firstName} ${j.lastName}`))) return;
-    await deleteJoueur(j.id);
-    setJoueurs((prev) => prev.filter((jj) => jj.id !== j.id));
+  function confirmDelete(e: React.MouseEvent, j: Joueur) {
+    e.stopPropagation();
+    setDialog({
+      title: t('players.deleteConfirm').replace('{name}', `${j.firstName} ${j.lastName}`),
+      message: '',
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      onConfirm: async () => {
+        setDialog(null);
+        await deleteJoueur(j.id);
+        setJoueurs((prev) => prev.filter((jj) => jj.id !== j.id));
+      },
+    });
   }
 
   const filtered = joueurs.filter((j) => {
     const q = search.toLowerCase();
     return !q || `${j.firstName} ${j.lastName}`.toLowerCase().includes(q);
   });
-
-  const posteColors: Record<string, 'violet' | 'blue' | 'green' | 'yellow'> = {
-    GB: 'yellow',
-    DEF: 'blue',
-    MIL: 'green',
-    ATT: 'violet',
-  };
 
   return (
     <AppLayout>
@@ -152,9 +206,10 @@ export default function JoueursPage() {
         ) : (
           <div className="space-y-2">
             {filtered.map((j) => (
-              <div
+              <button
                 key={j.id}
-                className="flex items-center gap-4 bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5"
+                onClick={() => setStatsJoueur(j)}
+                className="w-full text-left flex items-center gap-4 bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5 hover:border-slate-600/60 hover:bg-slate-800/70 transition-all"
               >
                 <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-400 flex-shrink-0">
                   {j.numeroMaillot ?? j.firstName[0]}
@@ -176,22 +231,36 @@ export default function JoueursPage() {
                   </Badge>
                 )}
                 <button
-                  onClick={() => openEdit(j)}
+                  onClick={(e) => openEdit(e, j)}
                   className="text-slate-500 hover:text-slate-300 transition-colors p-1"
                 >
                   <Pencil size={15} />
                 </button>
                 <button
-                  onClick={() => handleDelete(j)}
+                  onClick={(e) => confirmDelete(e, j)}
                   className="text-slate-500 hover:text-red-400 transition-colors p-1"
                 >
                   <Trash2 size={15} />
                 </button>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {statsJoueur && (
+        <JoueurStatsModal joueur={statsJoueur} onClose={() => setStatsJoueur(null)} />
+      )}
+
+      <Dialog
+        open={!!dialog}
+        title={dialog?.title}
+        message={dialog?.message ?? ''}
+        variant={dialog?.variant}
+        confirmLabel={dialog?.confirmLabel}
+        onConfirm={dialog?.onConfirm}
+        onClose={() => setDialog(null)}
+      />
 
       <Modal
         open={showModal}

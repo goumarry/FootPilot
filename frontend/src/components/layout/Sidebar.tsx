@@ -1,14 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, Newspaper, User,
-  LogOut, Users, FolderOpen, Shield, Activity,
+  LogOut, Users, Shield, Activity,
   ChevronRight, Trophy, Settings, Sun, Moon,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useI18n } from '@/contexts/I18nContext';
 import { clsx } from '@/lib/clsx';
-import { useClubLogo } from '@/hooks/useClubLogo';
+import { useClub } from '@/hooks/useClubLogo';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 
 interface NavItem {
@@ -21,10 +21,11 @@ interface NavItem {
 const coachItems: NavItem[] = [
   { to: '/admin', icon: LayoutDashboard, labelKey: 'nav.dashboard', end: true },
   { to: '/admin/membres', icon: Users, labelKey: 'nav.members' },
-  { to: '/admin/categories', icon: FolderOpen, labelKey: 'nav.categories' },
   { to: '/admin/equipes', icon: Shield, labelKey: 'nav.teams' },
   { to: '/admin/joueurs', icon: Users, labelKey: 'nav.players' },
   { to: '/admin/planning', icon: Calendar, labelKey: 'nav.planning' },
+  { to: '/admin/matchs', icon: Trophy, labelKey: 'nav.matchs' },
+  { to: '/admin/entrainements', icon: Calendar, labelKey: 'nav.entrainements' },
   { to: '/admin/actualites', icon: Newspaper, labelKey: 'nav.news' },
 ];
 
@@ -36,6 +37,8 @@ const gestionnaireItems: NavItem[] = [
 const joueurItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard', end: true },
   { to: '/dashboard/planning', icon: Calendar, labelKey: 'nav.myPlanning' },
+  { to: '/dashboard/matchs', icon: Trophy, labelKey: 'nav.myMatchs' },
+  { to: '/dashboard/entrainements', icon: Calendar, labelKey: 'nav.myEntrainements' },
   { to: '/dashboard/actualites', icon: Newspaper, labelKey: 'nav.actus' },
   { to: '/dashboard/stats', icon: Trophy, labelKey: 'nav.stats' },
   { to: '/dashboard/profil', icon: User, labelKey: 'nav.myProfile' },
@@ -46,7 +49,7 @@ export default function Sidebar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const clubLogoUrl = useClubLogo();
+  const club = useClub();
 
   function handleLogout() {
     logout();
@@ -64,13 +67,15 @@ export default function Sidebar() {
       <div className="px-5 py-5 border-b border-slate-200 dark:border-slate-700/40">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center overflow-hidden flex-shrink-0">
-            {clubLogoUrl ? (
-              <img src={clubLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+            {club?.logoUrl ? (
+              <img src={club.logoUrl} alt="Logo" className="w-full h-full object-cover" />
             ) : (
               <Activity size={16} className="text-violet-400" />
             )}
           </div>
-          <span className="text-base font-bold text-slate-800 dark:text-slate-100 tracking-tight">FootPilot</span>
+          <span className="text-base font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">
+            {club?.nom ?? 'FootPilot'}
+          </span>
         </div>
       </div>
 
