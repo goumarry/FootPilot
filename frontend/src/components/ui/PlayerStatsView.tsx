@@ -15,7 +15,6 @@ export interface MatchSection extends StatsSection {
   butsMarques: number;
   butsParMatch: number | null;
   passes: number;
-  cscs: number;
 }
 
 export interface JoueurStatsData {

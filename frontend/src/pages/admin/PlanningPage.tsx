@@ -216,14 +216,21 @@ export default function PlanningPage() {
   const { locale, t } = useI18n();
   const { user } = useAuth();
   const canManage = user?.role === 'GESTIONNAIRE' || user?.role === 'ENTRAINEUR';
-  const isEntraineur = user?.role === 'ENTRAINEUR';
+  const isCoachLike = user?.role === 'ENTRAINEUR' || user?.role === 'GESTIONNAIRE';
 
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMode, setFilterMode] = useState<string>(() => isEntraineur ? 'mine' : 'all');
+  const [filterMode, setFilterMode] = useState<string>(() => isCoachLike ? 'mine' : 'all');
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+  const [daysCount, setDaysCount] = useState<7 | 28>(() => window.innerWidth < 768 ? 7 : 28);
+
+  useEffect(() => {
+    function onResize() { setDaysCount(window.innerWidth < 768 ? 7 : 28); }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -265,18 +272,17 @@ export default function PlanningPage() {
   );
 
   const createEquipes = useMemo(
-    () => (isEntraineur ? equipes.filter((eq) => myTeamIds.includes(eq.id)) : equipes),
-    [equipes, isEntraineur, myTeamIds]
+    () => equipes.filter((eq) => myTeamIds.includes(eq.id)),
+    [equipes, myTeamIds]
   );
 
   const filterEquipes = useMemo(
-    () => (isEntraineur ? equipes.filter((eq) => myTeamIds.includes(eq.id)) : equipes),
-    [equipes, isEntraineur, myTeamIds]
+    () => equipes.filter((eq) => myTeamIds.includes(eq.id)),
+    [equipes, myTeamIds]
   );
 
   function canEditEvent(ev: Evenement): boolean {
     if (!canManage) return false;
-    if (user?.role === 'GESTIONNAIRE') return true;
     return myTeamIds.includes(ev.equipeId);
   }
 
@@ -295,7 +301,7 @@ export default function PlanningPage() {
     return evenements.filter((e) => e.equipeId === filterMode);
   }, [evenements, filterMode, myTeamIds]);
 
-  const days = useMemo(() => Array.from({ length: 28 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(() => Array.from({ length: daysCount }, (_, i) => addDays(weekStart, i)), [weekStart, daysCount]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, Evenement[]>();
@@ -307,11 +313,11 @@ export default function PlanningPage() {
     return map;
   }, [filtered]);
 
-  const windowEnd = addDays(weekStart, 28);
+  const windowEnd = addDays(weekStart, daysCount);
   const windowLabel = (() => {
     const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
     const loc = locale === 'fr' ? 'fr-FR' : 'en-GB';
-    return `${weekStart.toLocaleDateString(loc, opts)} — ${addDays(weekStart, 27).toLocaleDateString(loc, { ...opts, year: 'numeric' })}`;
+    return `${weekStart.toLocaleDateString(loc, opts)} — ${addDays(weekStart, daysCount - 1).toLocaleDateString(loc, { ...opts, year: 'numeric' })}`;
   })();
 
   const today = new Date();
@@ -415,9 +421,7 @@ export default function PlanningPage() {
   const selectedStatut = selected ? getStatut(selected) : null;
   const selectedEditable = selected ? (selectedStatut === 'AVENIR' || selectedStatut === 'EN_COURS') : false;
   const selectedCanEdit = selected ? canEditEvent(selected) : false;
-  const canEditAppel = canManage && selected
-    ? (user?.role === 'GESTIONNAIRE' || myTeamIds.includes(selected.equipeId))
-    : false;
+  const canEditAppel = canManage && !!selected && myTeamIds.includes(selected.equipeId);
 
   return (
     <AppLayout>
@@ -435,7 +439,7 @@ export default function PlanningPage() {
         </div>
 
         <div className="flex gap-2 flex-wrap mb-4 overflow-x-auto pb-1">
-          {isEntraineur && <FilterChip active={filterMode === 'mine'} onClick={() => setFilterMode('mine')} label={t('planning.myTeams')} />}
+          {isCoachLike && <FilterChip active={filterMode === 'mine'} onClick={() => setFilterMode('mine')} label={t('planning.myTeams')} />}
           <FilterChip active={filterMode === 'all'} onClick={() => setFilterMode('all')} label={t('planning.allTeams')} />
           {filterEquipes.map((eq) => (
             <FilterChip key={eq.id} active={filterMode === eq.id} onClick={() => setFilterMode(eq.id)} label={teamLabel(eq)} />
@@ -443,18 +447,85 @@ export default function PlanningPage() {
         </div>
 
         <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => setWeekStart((d) => addDays(d, -28))} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors">
+          <button onClick={() => setWeekStart((d) => addDays(d, -daysCount))} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors">
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-semibold text-slate-300 flex-1 text-center">{windowLabel}</span>
-          <button onClick={() => setWeekStart((d) => addDays(d, 28))} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors">
+          <button onClick={() => setWeekStart((d) => addDays(d, daysCount))} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors">
             <ChevronRight size={16} />
           </button>
         </div>
 
         {loading ? (
           <div className="text-center py-16 text-slate-500 text-sm">{t('planning.loading')}</div>
+        ) : daysCount === 7 ? (
+          // Mobile : vue verticale (jours empilés)
+          <div className="space-y-1.5">
+            {days.map((day) => {
+              const key = day.toDateString();
+              const dayEvents = eventsByDay.get(key) ?? [];
+              const isToday = isSameDay(day, today);
+              const isPastDay = day < new Date(today.toDateString());
+              const dayIndex = (day.getDay() + 6) % 7;
+              return (
+                <div
+                  key={key}
+                  className={`flex gap-3 rounded-xl border px-3 py-2.5 ${
+                    isToday ? 'border-violet-500/50 bg-violet-500/8'
+                    : isPastDay ? 'border-slate-700/20 bg-slate-800/20 opacity-70'
+                    : 'border-slate-700/30 bg-slate-800/30'
+                  }`}
+                >
+                  <div className="w-10 flex-shrink-0 text-center pt-0.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">{DAY_LABELS_FR[dayIndex]}</p>
+                    <p className={`text-xl font-extrabold leading-none mt-0.5 ${isToday ? 'text-violet-400' : isPastDay ? 'text-slate-600' : 'text-slate-300'}`}>
+                      {day.getDate()}
+                    </p>
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1 py-0.5">
+                    {dayEvents.map((ev) => {
+                      const evStatut = getStatut(ev);
+                      const isMatch = ev.type === 'MATCH';
+                      return (
+                        <button
+                          key={ev.id}
+                          onClick={() => openDetail(ev)}
+                          className={`w-full text-left flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-opacity hover:opacity-80 ${
+                            ev.annule ? 'bg-red-500/10 opacity-60'
+                            : evStatut === 'EN_COURS' ? (isMatch ? 'bg-violet-500/25' : 'bg-emerald-500/20')
+                            : isMatch ? 'bg-violet-500/10' : 'bg-emerald-500/8'
+                          }`}
+                        >
+                          <span className={`text-[9px] font-bold w-4 flex-shrink-0 ${ev.annule ? 'text-red-400/60' : isMatch ? 'text-violet-400' : 'text-emerald-400'}`}>
+                            {isMatch ? 'M' : 'E'}
+                          </span>
+                          <span className={`text-xs truncate ${ev.annule ? 'text-slate-500 line-through' : isMatch ? 'text-violet-200' : 'text-emerald-300'}`}>
+                            {new Date(ev.dateHeure).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            {ev.equipe && ` · ${ev.equipe.nomEquipe}`}
+                            {isMatch && ev.adversaire && ` vs ${ev.adversaire}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {canManage && !isPastDay && createEquipes.length > 0 && (
+                      <button
+                        onClick={() => {
+                          const d = new Date(day); d.setHours(10, 0, 0, 0);
+                          setForm((f) => ({ ...f, dateHeure: toDatetimeLocal(d.toISOString()) }));
+                          setShowCreate(true);
+                        }}
+                        className="text-[10px] text-slate-600 hover:text-violet-400 transition-colors py-0.5"
+                      >
+                        + {t('planning.add')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
+          // Desktop : grille 7 colonnes
           <>
             <div className="grid grid-cols-7 gap-1 mb-1">
               {DAY_LABELS_FR.map((d, i) => (

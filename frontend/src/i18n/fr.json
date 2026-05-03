@@ -168,9 +168,12 @@
     "publishNews": "Publier une actualité",
     "publishNewsDesc": "Communication club",
     "clubProfile": "Profil du club",
-    "editClub": "Modifier →",
+    "editClub": "Modifier le club",
     "name": "Nom",
-    "city": "Ville"
+    "city": "Ville",
+    "coaches": "Entraîneurs",
+    "totalMatches": "Matchs",
+    "totalTrainings": "Entraînements"
   },
   "categories": {
     "subtitle": "Gestion",
@@ -225,8 +228,9 @@
     "notFound": "Équipe introuvable.",
     "yourTeam": "Votre équipe",
     "joinAsCoach": "Rejoindre comme entraîneur",
-    "notCoachHint": "Vous n'êtes pas entraîneur de cette équipe.",
-    "contactCoachesHint": "Les entraîneurs actuels peuvent vous ajouter.",
+    "notCoachHint": "Pas entraîneur de cette équipe.",
+    "contactCoachesHint": "Un entraîneur doit vous ajouter.",
+    "notGestionnaireCoachHint": "Accès en lecture seule.",
     "searchPlayer": "Rechercher un joueur…",
     "searchCoach": "Rechercher un entraîneur…"
   },

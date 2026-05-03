@@ -217,9 +217,9 @@ export default function EquipesPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-3xl">
+      <div className="p-3 sm:p-6 max-w-3xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">
               {t('teams.subtitle')}
@@ -261,19 +261,19 @@ export default function EquipesPage() {
                   }
                 }}
                 onDrop={() => handleDrop(cat.id)}
-                className={`rounded-2xl border p-4 transition-all ${
+                className={`rounded-2xl border p-3 sm:p-4 transition-all ${
                   dropTargetCatId === cat.id
                     ? 'border-violet-500/60 bg-violet-500/5'
                     : 'border-slate-700/40 bg-slate-800/30'
                 }`}
               >
                 {/* Category header */}
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3">
                   <div className="w-8 h-8 rounded-xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
                     <FolderOpen size={15} className="text-violet-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-200">{cat.nom}</p>
+                    <p className="text-sm font-bold text-slate-200 truncate">{cat.nom}</p>
                     <p className="text-xs text-slate-500">
                       {eqs.length === 1
                         ? t('categories.teamCount').replace('{n}', String(eqs.length))
@@ -308,21 +308,21 @@ export default function EquipesPage() {
 
                 {/* Teams list */}
                 {eqs.length === 0 ? (
-                  <div className="ml-5 border border-dashed border-slate-700/30 rounded-xl px-4 py-3 text-center text-xs text-slate-600">
+                  <div className="ml-3 sm:ml-5 border border-dashed border-slate-700/30 rounded-xl px-4 py-3 text-center text-xs text-slate-600">
                     {t('teams.noTeams')}
                   </div>
                 ) : (
-                  <div className="ml-5 space-y-2">
+                  <div className="ml-3 sm:ml-5 space-y-2">
                     {eqs.map((eq) => {
                       const isMyTeam =
-                        isCoach &&
+                        (isCoach || isGestionnaire) &&
                         (eq.entraineurs?.some((e) => e.entraineur.userId === user?.id) ?? false);
-                      const canEdit = !isCoach || isMyTeam;
+                      const canEdit = isMyTeam;
 
                       return (
                         <div
                           key={eq.id}
-                          draggable={isGestionnaire}
+                          draggable={isGestionnaire && isMyTeam}
                           onDragStart={(e) => {
                             e.dataTransfer.setData('equipeId', eq.id);
                             setDraggedEquipeId(eq.id);
@@ -332,7 +332,7 @@ export default function EquipesPage() {
                             setDropTargetCatId(null);
                           }}
                           onClick={() => navigate(`/admin/equipes/${eq.id}`)}
-                          className={`flex items-center gap-3 border rounded-xl px-4 py-3 transition-all select-none ${
+                          className={`flex items-center gap-2 sm:gap-3 border rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 transition-all select-none touch-manipulation ${
                             draggedEquipeId === eq.id
                               ? 'opacity-40'
                               : isMyTeam
@@ -340,7 +340,7 @@ export default function EquipesPage() {
                               : !isCoach
                               ? 'bg-slate-800/50 border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/70'
                               : 'bg-slate-800/25 border-slate-700/20 hover:border-slate-600/30 hover:bg-slate-800/40'
-                          } ${isGestionnaire ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                          } ${isGestionnaire && isMyTeam ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                         >
                           <div
                             className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -364,13 +364,13 @@ export default function EquipesPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p
-                              className={`text-sm font-semibold ${
+                              className={`text-sm font-semibold truncate ${
                                 isMyTeam || !isCoach ? 'text-slate-200' : 'text-slate-500'
                               }`}
                             >
                               {eq.nomEquipe}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-slate-500 truncate">
                               {eq.niveauChampionnat ?? t('teams.levelUnset')}
                               {eq._count &&
                                 ` · ${
@@ -387,7 +387,7 @@ export default function EquipesPage() {
                             </p>
                           </div>
                           {isMyTeam && (
-                            <span className="text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
+                            <span className="hidden sm:inline text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
                               {t('teams.yourTeam')}
                             </span>
                           )}

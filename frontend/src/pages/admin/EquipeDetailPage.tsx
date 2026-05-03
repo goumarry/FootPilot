@@ -51,7 +51,7 @@ export default function EquipeDetailPage() {
   const isCoachRole = user?.role === 'ENTRAINEUR';
   const isGestionnaire = user?.role === 'GESTIONNAIRE';
   const isMyTeam = equipe?.entraineurs.some((ee) => ee.entraineur.userId === user?.id) ?? false;
-  const canManage = isGestionnaire || isMyTeam;
+  const canManage = isMyTeam;
   const myEntraineur = allEntraineurs.find((e) => e.userId === user?.id) ?? null;
   const teamHasCoaches = (equipe?.entraineurs.length ?? 0) > 0;
 
@@ -150,14 +150,6 @@ export default function EquipeDetailPage() {
     }
   }
 
-  function handleLockedJoinClick() {
-    setDialog({
-      title: t('teams.joinAsCoach'),
-      message: t('teams.contactCoachesHint'),
-      variant: 'warning',
-    });
-  }
-
   const currentJoueurIds = new Set(equipe?.joueurs.map((j) => j.joueurId) ?? []);
   const currentEntraineurIds = new Set(equipe?.entraineurs.map((e) => e.entraineurId) ?? []);
 
@@ -224,35 +216,29 @@ export default function EquipeDetailPage() {
           )}
         </div>
 
-        {/* Warning banner for ENTRAINEUR not on this team */}
+        {/* Compact banner — GESTIONNAIRE not yet a coach */}
+        {isGestionnaire && !isMyTeam && (
+          <div className="flex items-center gap-2.5 bg-blue-500/8 border border-blue-500/15 rounded-xl px-3 py-2.5 mb-4">
+            <Lock size={13} className="text-blue-400 flex-shrink-0" />
+            <span className="text-xs text-blue-300 flex-1 min-w-0">{t('teams.notGestionnaireCoachHint')}</span>
+            <Button size="sm" onClick={handleSelfAssign} loading={selfAssigning}>
+              {t('teams.joinAsCoach')}
+            </Button>
+          </div>
+        )}
+
+        {/* Compact banner — ENTRAINEUR not on this team */}
         {isCoachRole && !isMyTeam && (
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Lock size={14} className="text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-300 mb-1">
-                  {t('teams.notCoachHint')}
-                </p>
-                {canSelfAssign ? (
-                  <Button size="sm" className="mt-1" onClick={handleSelfAssign} loading={selfAssigning}>
-                    {t('teams.joinAsCoach')}
-                  </Button>
-                ) : (
-                  <div className="flex items-center gap-2 mt-1">
-                    <button
-                      onClick={handleLockedJoinClick}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 bg-slate-800/50 border border-slate-700/40 px-3 py-1.5 rounded-lg hover:border-slate-600/60 transition-colors cursor-pointer"
-                    >
-                      <Lock size={11} />
-                      {t('teams.joinAsCoach')}
-                    </button>
-                    <span className="text-xs text-amber-400/60">{t('teams.contactCoachesHint')}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className="flex items-center gap-2.5 bg-amber-500/8 border border-amber-500/15 rounded-xl px-3 py-2.5 mb-4">
+            <Lock size={13} className="text-amber-400 flex-shrink-0" />
+            <span className="text-xs text-amber-300 flex-1 min-w-0">{t('teams.notCoachHint')}</span>
+            {canSelfAssign ? (
+              <Button size="sm" onClick={handleSelfAssign} loading={selfAssigning}>
+                {t('teams.joinAsCoach')}
+              </Button>
+            ) : (
+              <span className="text-xs text-slate-500">{t('teams.contactCoachesHint')}</span>
+            )}
           </div>
         )}
 
@@ -318,20 +304,12 @@ export default function EquipeDetailPage() {
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
               {t('teams.coaches')} ({equipe.entraineurs.length})
             </h2>
-            <div className="flex items-center gap-2">
-              {/* GESTIONNAIRE quick self-assign button */}
-              {isGestionnaire && canSelfAssign && (
-                <Button size="sm" variant="secondary" onClick={handleSelfAssign} loading={selfAssigning}>
-                  {t('teams.joinAsCoach')}
-                </Button>
-              )}
-              {canManage && (
-                <Button size="sm" variant="secondary" onClick={() => { setEntraineurSearch(''); setShowEntraineurModal(true); }}>
-                  <UserPlus size={13} />
-                  {t('common.add')}
-                </Button>
-              )}
-            </div>
+            {canManage && (
+              <Button size="sm" variant="secondary" onClick={() => { setEntraineurSearch(''); setShowEntraineurModal(true); }}>
+                <UserPlus size={13} />
+                {t('common.add')}
+              </Button>
+            )}
           </div>
 
           {equipe.entraineurs.length === 0 ? (

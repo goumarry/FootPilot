@@ -32,6 +32,20 @@ async function isCoachOfTeam(entraineurId: string, equipeId: string): Promise<bo
   return record !== null;
 }
 
+async function getOrCreateEntraineurRecord(userId: string, clubId: string) {
+  return prisma.entraineur.upsert({
+    where: { userId },
+    update: {},
+    create: { userId, clubId },
+  });
+}
+
+async function userIsCoachOfTeam(userId: string, clubId: string, equipeId: string): Promise<boolean> {
+  const me = await findMyEntraineurRecord(userId, clubId);
+  if (!me) return false;
+  return isCoachOfTeam(me.id, equipeId);
+}
+
 // GET /api/equipes — all club teams, with coach userIds for frontend distinction
 router.get('/', async (req, res) => {
   const clubId = req.user!.clubId;
@@ -139,13 +153,11 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, re
     include: { categorie: true },
   });
 
-  // Auto-assign creator as coach
-  const creatorEntraineur = await findMyEntraineurRecord(req.user!.userId, clubId);
-  if (creatorEntraineur) {
-    await prisma.entraineurEquipe.create({
-      data: { entraineurId: creatorEntraineur.id, equipeId: equipe.id },
-    });
-  }
+  // Auto-assign creator as coach (create Entraineur record for gestionnaire if needed)
+  const creatorEntraineur = await getOrCreateEntraineurRecord(req.user!.userId, clubId);
+  await prisma.entraineurEquipe.create({
+    data: { entraineurId: creatorEntraineur.id, equipeId: equipe.id },
+  });
 
   return res.status(201).json(equipe);
 });
@@ -163,11 +175,8 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, 
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
-  if (req.user!.role === Role.ENTRAINEUR) {
-    const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
-    if (!me || !(await isCoachOfTeam(me.id, req.params.id))) {
-      return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
-    }
+  if (!(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
+    return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
   const updated = await prisma.equipe.update({
@@ -186,11 +195,8 @@ router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (re
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
-  if (req.user!.role === Role.ENTRAINEUR) {
-    const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
-    if (!me || !(await isCoachOfTeam(me.id, req.params.id))) {
-      return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
-    }
+  if (!(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
+    return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
   await prisma.equipe.delete({ where: { id: req.params.id } });
@@ -207,11 +213,8 @@ router.post('/:id/joueurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), asy
   const equipe = await prisma.equipe.findUnique({ where: { id: req.params.id } });
   if (!equipe) return res.status(404).json({ message: 'Équipe introuvable.' });
 
-  if (req.user!.role === Role.ENTRAINEUR) {
-    const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
-    if (!me || !(await isCoachOfTeam(me.id, req.params.id))) {
-      return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
-    }
+  if (!(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
+    return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
   const existing = await prisma.joueurEquipe.findUnique({
@@ -231,11 +234,8 @@ router.post('/:id/joueurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), asy
 
 // DELETE /api/equipes/:id/joueurs/:joueurId — retirer un joueur
 router.delete('/:id/joueurs/:joueurId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
-  if (req.user!.role === Role.ENTRAINEUR) {
-    const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
-    if (!me || !(await isCoachOfTeam(me.id, req.params.id))) {
-      return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
-    }
+  if (!(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
+    return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
   await prisma.joueurEquipe.update({
@@ -256,8 +256,17 @@ router.post('/:id/entraineurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR),
   });
   if (!equipe) return res.status(404).json({ message: 'Équipe introuvable.' });
 
-  if (req.user!.role === Role.ENTRAINEUR) {
-    const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
+  const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
+
+  if (req.user!.role === Role.GESTIONNAIRE) {
+    // Self-assign: always allowed (even if team already has coaches, no count restriction)
+    if (!me || parsed.data.entraineurId !== me.id) {
+      // Adding someone else: must be coach of the team
+      if (!me || !(await isCoachOfTeam(me.id, req.params.id))) {
+        return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
+      }
+    }
+  } else if (req.user!.role === Role.ENTRAINEUR) {
     if (!me) return res.status(403).json({ message: 'Profil entraîneur introuvable.' });
 
     if (parsed.data.entraineurId === me.id) {
@@ -272,7 +281,6 @@ router.post('/:id/entraineurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR),
       }
     }
   }
-  // GESTIONNAIRE : no restrictions — can assign anyone including themselves
 
   const record = await prisma.entraineurEquipe.upsert({
     where: { entraineurId_equipeId: { entraineurId: parsed.data.entraineurId, equipeId: req.params.id } },
@@ -284,11 +292,8 @@ router.post('/:id/entraineurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR),
 
 // DELETE /api/equipes/:id/entraineurs/:entraineurId
 router.delete('/:id/entraineurs/:entraineurId', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
-  if (req.user!.role === Role.ENTRAINEUR) {
-    const me = await findMyEntraineurRecord(req.user!.userId, req.user!.clubId!);
-    if (!me || !(await isCoachOfTeam(me.id, req.params.id))) {
-      return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
-    }
+  if (!(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
+    return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
   await prisma.entraineurEquipe.delete({

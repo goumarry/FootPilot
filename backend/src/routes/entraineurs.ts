@@ -16,6 +16,20 @@ const entraineurUpdateSchema = z.object({
 router.get('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
   const clubId = req.user!.clubId;
 
+  // Ensure all gestionnaires in the club have an Entraineur record so they appear in coach lists
+  if (clubId) {
+    const gestionnaires = await prisma.user.findMany({
+      where: { clubId, role: Role.GESTIONNAIRE },
+      select: { id: true },
+    });
+    if (gestionnaires.length > 0) {
+      await prisma.entraineur.createMany({
+        data: gestionnaires.map((g) => ({ userId: g.id, clubId: clubId! })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
   const entraineurs = await prisma.entraineur.findMany({
     where: clubId ? { clubId } : {},
     include: {

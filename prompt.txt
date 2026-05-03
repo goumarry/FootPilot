@@ -1,33 +1,36 @@
-Refactoring UI/UX : Fusion de /categories et /equipes
+Refactoring Base de données & Logique Métier : Historisation des équipes (Correction du bug de Snapshot)
 
-Nouvelle vue unifiée : Fusionner les deux pages. Afficher les catégories sous forme de cards.
+Contexte & Problème :
+Actuellement, les fiches d'appel (snapshots) des événements (matchs/entraînements) sont générées en "lazy loading" au moment où un utilisateur ouvre l'événement. Si un joueur quitte l'équipe ou est transféré avant que quelqu'un n'ouvre l'événement passé, le joueur n'apparaît pas sur la feuille de match car l'API se base sur les joueurs actuellement rattachés à l'équipe.
 
-Hiérarchie visuelle : Afficher les équipes rattachées sous leur catégorie respective, avec une légère indentation vers la droite (sous forme de cards également).
+Solution à implémenter : Historisation des liaisons Joueur-Équipe
+Nous devons arrêter de supprimer physiquement les liaisons entre les joueurs et les équipes, et passer sur un système de dates de validité.
 
-Création simplifiée (Bouton +) : Supprimer le champ de sélection de catégorie dans le formulaire de création d'équipe. À la place, ajouter un bouton "+" directement sur la carte de la catégorie : le clic ouvre le formulaire et assigne automatiquement l'équipe à cette catégorie. Mettre à jour les formulaires de création et d'édition en conséquence.
+1. Mise à jour de la Base de Données (Table pivot Joueur <-> Équipe) :
 
-Drag & Drop : Permettre le glisser-déposer (drag and drop) des équipes pour les déplacer facilement d'une catégorie à une autre en cas d'erreur.
+Ajouter deux colonnes dans la table de liaison entre les joueurs et les équipes :
 
-Modale d'ajout de membres : Actuellement, la fenêtre (modale) se ferme après chaque ajout d'un joueur ou entraîneur. La modifier pour qu'elle reste ouverte. Ajouter également une barre de recherche/filtre sur le nom et prénom.
+date_entree (Date/Time, par défaut à la date de création de la ligne).
 
-Règles Métier & Gestion des Rôles (Permissions)
+date_sortie (Date/Time, nullable, par défaut à null).
 
-Création de Catégories : Seuls les utilisateurs avec le grade Gestionnaire peuvent créer une catégorie.
+2. Mise à jour de la logique des requêtes (CRUD Équipes) :
 
-Nouveau rôle "Gestionnaire" (Entraîneur ++) :
+Ajout d'un joueur dans une équipe : Créer la ligne normalement (date_entree = maintenant, date_sortie = null).
 
-Peut s'ajouter lui-même dans n'importe quelle équipe en tant qu'entraîneur.
+Retrait/Transfert d'un joueur : Ne plus faire de DELETE (Hard delete). À la place, faire un UPDATE de la ligne existante en passant date_sortie = now().
 
-Peut retirer n'importe quel entraîneur (ou tous les entraîneurs) d'une équipe.
+Affichage de l'effectif actuel (Dashboard, vues équipes, etc.) : Mettre à jour toutes les requêtes qui récupèrent les joueurs d'une équipe pour filtrer systématiquement avec la condition : date_sortie IS NULL.
 
-Rôle "Entraîneur" (Standard) :
+3. Correction de la génération des Snapshots (Le correctif du bug) :
 
-Ne peut TOUJOURS PAS s'ajouter lui-même à une équipe si celle-ci a déjà un entraîneur ou un gestionnaire assigné.
+Lorsqu'un match ou entraînement est ouvert et qu'il faut générer la fiche d'appel initiale (le snapshot), la requête ne doit plus chercher "les joueurs actuels de l'équipe".
 
-Assignation automatique : Lorsqu'un gestionnaire ou un entraîneur crée une nouvelle équipe, il y est automatiquement assigné en tant qu'entraîneur.
+Nouvelle requête de snapshot : Récupérer les joueurs liés à l'équipe dont la validité englobe la date de l'événement :
+date_entree <= date_de_levenement AND (date_sortie IS NULL OR date_sortie >= date_de_levenement).
 
-Instructions de Code
+4. Instructions de code & Nettoyage (Clean Code) :
 
-Appliquer les principes du Clean Code.
+S'assurer que la migration de base de données gère bien les données existantes (mettre date_entree à la date de création de l'équipe ou du club pour les anciens joueurs, et laisser date_sortie à null).
 
-Nettoyer scrupuleusement le code mort (supprimer les anciens composants, fonctions et états qui ne sont plus utilisés suite à cette fusion).
+NETTOYAGE STRICT : Je veux que tu nettoies scrupuleusement l'ancienne structure et l'ancien code qui ne sont plus bons. Supprime toute la logique obsolète liée à l'ancienne façon de faire les snapshots et assure-toi que la suppression physique (DELETE) n'est plus utilisée nulle part pour retirer un joueur de son équipe. Ne laisse aucun code mort.

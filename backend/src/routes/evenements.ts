@@ -115,14 +115,16 @@ router.get('/', async (req, res) => {
       include: { equipes: { where: { dateFin: null }, select: { equipeId: true } } },
     });
     if (!joueur) return res.json([]);
-    const ids = joueur.equipes.map((e) => e.equipeId);
-    if (ids.length === 0) return res.json([]);
 
+    const currentTeamIds = joueur.equipes.map((e) => e.equipeId);
+
+    // Futurs : seulement les événements de l'équipe courante
+    // Passés  : tous les événements où le joueur figure dans le snapshot (peu importe l'équipe)
     const allEvenements = await prisma.evenement.findMany({
       where: {
         OR: [
-          { equipeId: { in: ids } },
-          { presences: { some: { joueurId: joueur.id } } },
+          { equipeId: { in: currentTeamIds } },   // équipe actuelle (peut être vide)
+          { presences: { some: { joueurId: joueur.id } } }, // snapshot toutes équipes
         ],
         ...(from && { dateHeure: { gte: new Date(from) } }),
         ...(to && { dateHeure: { lte: new Date(to) } }),
@@ -136,10 +138,8 @@ router.get('/', async (req, res) => {
 
     const now = Date.now();
     const filtered = allEvenements.filter((ev) => {
-      const end = new Date(ev.dateHeure).getTime() + ev.duree * 60000;
-      const isPast = now >= end;
-      if (!isPast) return ids.includes(ev.equipeId);
-      // Passé : uniquement si le joueur figure dans la liste d'appel
+      const isPast = now >= new Date(ev.dateHeure).getTime() + ev.duree * 60000;
+      if (!isPast) return currentTeamIds.includes(ev.equipeId);
       return ev.presences.length > 0;
     });
 

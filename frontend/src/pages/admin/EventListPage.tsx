@@ -233,7 +233,7 @@ function EventCard({ ev, locale, t, onClick }: { ev: Evenement; locale: string; 
   const statut = getStatut(ev);
   const isMatch = ev.type === 'MATCH';
   return (
-    <button onClick={onClick} className="w-full text-left bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5 hover:border-slate-600/60 hover:bg-slate-800/70 transition-all">
+    <button onClick={onClick} className={`w-full text-left bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3.5 hover:border-slate-600/60 hover:bg-slate-800/70 transition-all${ev.annule ? ' opacity-60' : ''}`}>
       <div className="flex items-center gap-4">
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isMatch ? 'bg-violet-500/10' : 'bg-emerald-500/10'}`}>
           <Calendar size={16} className={isMatch ? 'text-violet-400' : 'text-emerald-400'} />
@@ -277,12 +277,12 @@ export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: E
   const { locale, t } = useI18n();
   const { user } = useAuth();
   const canManage = user?.role === 'GESTIONNAIRE' || user?.role === 'ENTRAINEUR';
-  const isEntraineur = user?.role === 'ENTRAINEUR';
+  const isCoachLike = user?.role === 'ENTRAINEUR' || user?.role === 'GESTIONNAIRE';
 
   const [evenements, setEvenements] = useState<Evenement[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterMode, setFilterMode] = useState<string>(() => isEntraineur ? 'mine' : 'all');
+  const [filterMode, setFilterMode] = useState<string>(() => isCoachLike ? 'mine' : 'all');
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -325,18 +325,17 @@ export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: E
   );
 
   const createEquipes = useMemo(
-    () => (isEntraineur ? equipes.filter((eq) => myTeamIds.includes(eq.id)) : equipes),
-    [equipes, isEntraineur, myTeamIds]
+    () => equipes.filter((eq) => myTeamIds.includes(eq.id)),
+    [equipes, myTeamIds]
   );
 
   const filterEquipes = useMemo(
-    () => (isEntraineur ? equipes.filter((eq) => myTeamIds.includes(eq.id)) : equipes),
-    [equipes, isEntraineur, myTeamIds]
+    () => equipes.filter((eq) => myTeamIds.includes(eq.id)),
+    [equipes, myTeamIds]
   );
 
   function canEditEvent(ev: Evenement): boolean {
     if (!canManage) return false;
-    if (user?.role === 'GESTIONNAIRE') return true;
     return myTeamIds.includes(ev.equipeId);
   }
 
@@ -355,8 +354,15 @@ export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: E
     return evenements.filter((e) => e.equipeId === filterMode);
   }, [evenements, filterMode, myTeamIds]);
 
-  const upcoming = filtered.filter((e) => { const s = getStatut(e); return s === 'AVENIR' || s === 'EN_COURS'; });
-  const past = filtered.filter((e) => { const s = getStatut(e); return s === 'TERMINE' || s === 'ANNULE'; });
+  const now = new Date();
+  const upcoming = filtered.filter((e) => {
+    const s = getStatut(e);
+    return s === 'AVENIR' || s === 'EN_COURS' || (s === 'ANNULE' && new Date(e.dateHeure) >= now);
+  });
+  const past = filtered.filter((e) => {
+    const s = getStatut(e);
+    return s === 'TERMINE' || (s === 'ANNULE' && new Date(e.dateHeure) < now);
+  });
 
   async function handleCreate() {
     if (!form.equipeId || !form.dateHeure) { setCreateError(t('planning.errorRequired')); return; }
@@ -451,9 +457,7 @@ export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: E
   const selectedStatut = selected ? getStatut(selected) : null;
   const selectedEditable = selected ? (selectedStatut === 'AVENIR' || selectedStatut === 'EN_COURS') : false;
   const selectedCanEdit = selected ? canEditEvent(selected) : false;
-  const canEditAppel = canManage && selected
-    ? (user?.role === 'GESTIONNAIRE' || myTeamIds.includes(selected.equipeId))
-    : false;
+  const canEditAppel = canManage && !!selected && myTeamIds.includes(selected.equipeId);
 
   return (
     <AppLayout>
@@ -469,7 +473,7 @@ export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: E
         </div>
 
         <div className="flex gap-2 flex-wrap mb-6 overflow-x-auto pb-1">
-          {isEntraineur && <FilterBtn active={filterMode === 'mine'} onClick={() => setFilterMode('mine')} label={t('planning.myTeams')} />}
+          {isCoachLike && <FilterBtn active={filterMode === 'mine'} onClick={() => setFilterMode('mine')} label={t('planning.myTeams')} />}
           <FilterBtn active={filterMode === 'all'} onClick={() => setFilterMode('all')} label={t('planning.allTeams')} />
           {filterEquipes.map((eq) => (
             <FilterBtn key={eq.id} active={filterMode === eq.id} onClick={() => setFilterMode(eq.id)} label={teamLabel(eq)} />

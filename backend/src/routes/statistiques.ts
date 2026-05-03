@@ -7,7 +7,6 @@ router.use(verifyToken);
 
 const joueurStatsInclude = {
   user: { select: { firstName: true, lastName: true } },
-  butsMarques: { select: { estCSC: true } },
   butsPasses: { select: { id: true } },
   presences: {
     include: { evenement: { select: { type: true } } },
@@ -32,16 +31,15 @@ function computeStats(joueur: {
   lastName: string | null;
   poste: string | null;
   user?: { firstName: string; lastName: string } | null;
-  butsMarques: Array<{ estCSC: boolean }>;
   butsPasses: unknown[];
   presences: PresenceRow[];
 }) {
   const training = joueur.presences.filter((p) => p.evenement.type === 'ENTRAINEMENT');
   const matchs = joueur.presences.filter((p) => p.evenement.type === 'MATCH');
 
-  const buts = joueur.butsMarques.filter((b) => !b.estCSC).length;
+  // Buts : valeur saisie dans les feuilles d'appel (Presence.buts), pas la table But
+  const buts = matchs.reduce((sum, p) => sum + (p.buts ?? 0), 0);
   const passes = joueur.butsPasses.length;
-  const cscs = joueur.butsMarques.filter((b) => b.estCSC).length;
 
   return {
     joueur: {
@@ -70,7 +68,6 @@ function computeStats(joueur: {
       butsMarques: buts,
       butsParMatch: matchs.length > 0 ? Math.round((buts / matchs.length) * 100) / 100 : null,
       passes,
-      cscs,
     },
   };
 }
@@ -127,12 +124,17 @@ router.get('/equipes/:id', async (req, res) => {
 
 // GET /api/statistiques/clubs/:id
 router.get('/clubs/:id', async (req, res) => {
-  const club = await prisma.club.findUnique({
-    where: { id: req.params.id },
-    include: {
-      _count: { select: { categories: true, equipes: true, joueurs: true, users: true } },
-    },
-  });
+  const [club, entraineurs, matchs, entrainements] = await Promise.all([
+    prisma.club.findUnique({
+      where: { id: req.params.id },
+      include: {
+        _count: { select: { categories: true, equipes: true, joueurs: true, users: true } },
+      },
+    }),
+    prisma.entraineur.count({ where: { clubId: req.params.id } }),
+    prisma.evenement.count({ where: { equipe: { clubId: req.params.id }, type: 'MATCH' } }),
+    prisma.evenement.count({ where: { equipe: { clubId: req.params.id }, type: 'ENTRAINEMENT' } }),
+  ]);
   if (!club) return res.status(404).json({ message: 'Club introuvable.' });
 
   return res.json({
@@ -141,6 +143,9 @@ router.get('/clubs/:id', async (req, res) => {
     equipes: club._count.equipes,
     joueurs: club._count.joueurs,
     membres: club._count.users,
+    entraineurs,
+    matchs,
+    entrainements,
   });
 });
 

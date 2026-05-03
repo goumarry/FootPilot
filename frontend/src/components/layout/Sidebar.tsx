@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Calendar, Newspaper, User,
+  LayoutDashboard, Calendar, Newspaper,
   LogOut, Users, Shield, Activity,
   ChevronRight, Trophy, Settings, Sun, Moon,
 } from 'lucide-react';
@@ -41,7 +41,6 @@ const joueurItems: NavItem[] = [
   { to: '/dashboard/entrainements', icon: Calendar, labelKey: 'nav.myEntrainements' },
   { to: '/dashboard/actualites', icon: Newspaper, labelKey: 'nav.actus' },
   { to: '/dashboard/stats', icon: Trophy, labelKey: 'nav.stats' },
-  { to: '/dashboard/profil', icon: User, labelKey: 'nav.myProfile' },
 ];
 
 export default function Sidebar() {

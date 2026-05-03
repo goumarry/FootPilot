@@ -19,16 +19,19 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [evenements, setEvenements] = useState<Evenement[]>([]);
-  const [actualites, setActualites] = useState<Actualite[]>([]);
+  const [nextMatch, setNextMatch] = useState<Evenement | null>(null);
+  const [nextTraining, setNextTraining] = useState<Evenement | null>(null);
+  const [actualite, setActualite] = useState<Actualite | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getEvenements(), getActualites()])
       .then(([evs, actus]) => {
         const now = new Date();
-        setEvenements(evs.filter((e) => new Date(e.dateHeure) >= now).slice(0, 3));
-        setActualites(actus.data.slice(0, 3));
+        const upcoming = evs.filter((e) => new Date(e.dateHeure) >= now && !e.annule);
+        setNextMatch(upcoming.find((e) => e.type === 'MATCH') ?? null);
+        setNextTraining(upcoming.find((e) => e.type === 'ENTRAINEMENT') ?? null);
+        setActualite(actus.data[0] ?? null);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -60,19 +63,18 @@ export default function DashboardPage() {
                   {t('dashboard.seeAll')} <ArrowRight size={12} />
                 </button>
               </div>
-              {evenements.length === 0 ? (
-                <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center text-sm text-slate-500">
-                  {t('dashboard.noUpcoming')}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {evenements.map((ev) => (
+              <div className="space-y-2">
+                {[
+                  { ev: nextMatch, type: 'MATCH' as const },
+                  { ev: nextTraining, type: 'ENTRAINEMENT' as const },
+                ].map(({ ev, type }) =>
+                  ev ? (
                     <div
                       key={ev.id}
                       className="flex items-center gap-4 bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-3"
                     >
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${ev.type === 'MATCH' ? 'bg-violet-500/10' : 'bg-emerald-500/10'}`}>
-                        {ev.type === 'MATCH' ? (
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${type === 'MATCH' ? 'bg-violet-500/10' : 'bg-emerald-500/10'}`}>
+                        {type === 'MATCH' ? (
                           <Shield size={16} className="text-violet-400" />
                         ) : (
                           <Calendar size={16} className="text-emerald-400" />
@@ -80,20 +82,39 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <Badge variant={ev.type === 'MATCH' ? 'violet' : 'green'}>
-                            {ev.type === 'MATCH' ? t('planning.match') : t('planning.training')}
+                          <Badge variant={type === 'MATCH' ? 'violet' : 'green'}>
+                            {type === 'MATCH' ? t('planning.match') : t('planning.training')}
                           </Badge>
                           {ev.equipe && (
-                            <span className="text-xs text-slate-500">{ev.equipe.nomEquipe}</span>
+                            <span className="text-xs text-slate-500 truncate">{ev.equipe.nomEquipe}</span>
                           )}
                         </div>
                         <p className="text-sm font-semibold text-slate-200">{formatDate(ev.dateHeure)}</p>
                         {ev.lieu && <p className="text-xs text-slate-500">{ev.lieu}</p>}
+                        {type === 'MATCH' && ev.adversaire && (
+                          <p className="text-xs text-slate-400">vs {ev.adversaire}</p>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ) : (
+                    <div
+                      key={type}
+                      className="flex items-center gap-4 bg-slate-800/30 border border-slate-700/30 rounded-xl px-4 py-3"
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${type === 'MATCH' ? 'bg-violet-500/5' : 'bg-emerald-500/5'}`}>
+                        {type === 'MATCH' ? (
+                          <Shield size={16} className="text-slate-600" />
+                        ) : (
+                          <Calendar size={16} className="text-slate-600" />
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-500">
+                        {type === 'MATCH' ? t('planning.match') : t('planning.training')} · {t('dashboard.noUpcoming')}
+                      </p>
+                    </div>
+                  )
+                )}
+              </div>
             </section>
 
             <section>
@@ -106,27 +127,20 @@ export default function DashboardPage() {
                   {t('dashboard.seeAll')} <ArrowRight size={12} />
                 </button>
               </div>
-              {actualites.length === 0 ? (
-                <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center text-sm text-slate-500">
-                  {t('dashboard.noNews')}
+              {actualite ? (
+                <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Newspaper size={13} className="text-violet-400" />
+                    <span className="text-xs text-slate-500">
+                      {new Date(actualite.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-200">{actualite.titre}</p>
+                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{actualite.contenu}</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {actualites.map((actu) => (
-                    <div
-                      key={actu.id}
-                      className="bg-slate-800/50 border border-slate-700/40 rounded-xl p-4"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Newspaper size={13} className="text-violet-400" />
-                        <span className="text-xs text-slate-500">
-                          {new Date(actu.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-200">{actu.titre}</p>
-                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{actu.contenu}</p>
-                    </div>
-                  ))}
+                <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-6 text-center text-sm text-slate-500">
+                  {t('dashboard.noNews')}
                 </div>
               )}
             </section>
