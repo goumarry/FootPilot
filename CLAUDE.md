@@ -22,7 +22,7 @@ docker compose up --build
 docker compose up db -d
 
 # Backend
-cd backend && npm install && npx prisma db push && npm run db:seed && npm run dev
+cd backend && npm install && npx prisma db push && npm run dev
 
 # Frontend (separate terminal)
 cd frontend && npm install && npm run dev
@@ -32,7 +32,6 @@ cd frontend && npm install && npm run dev
 ```bash
 npx prisma db push      # Sync schema changes to DB (dev)
 npx prisma generate     # Regenerate Prisma client types
-npm run db:seed         # Reset DB with demo data
 npm run db:studio       # Open Prisma Studio GUI
 npm run build           # Compile TypeScript → dist/
 ```
@@ -73,7 +72,6 @@ There are no automated tests in this project.
 - `src/lib/prisma.ts` — Singleton Prisma client (avoids connection leaks on hot-reload)
 - `src/lib/email.ts` — Email templating + Nodemailer sending
 - `prisma/schema.prisma` — Source of truth for DB schema
-- `prisma/seed.ts` — Creates 4 demo accounts + club + sample data
 
 ### Roles
 | Role | Access |
@@ -87,7 +85,7 @@ Route protection is symmetric: frontend uses `RequireAuth` with role arrays; bac
 ### Key data model relationships
 - **Club** is the root entity — everything belongs to one club
 - **Evenement** is polymorphic base for **Match** and **Entrainement** (via `TypeEvenement` enum)
-- **Joueur** can exist without a User account (manual entry); `userId` is optional
+- **Joueur** est toujours lié à un User (`userId` requis) — la création manuelle génère un User stub (`isManual: true`)
 - **Entraineur** always has a linked User account (`userId` unique)
 - **JoueurEquipe** is the many-to-many junction for players↔teams
 
@@ -113,14 +111,6 @@ SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / SMTP_FROM
 ```
 VITE_API_URL=http://localhost:3001
 ```
-
-## Test accounts (seeded)
-| Email | Password | Role |
-|-------|----------|------|
-| `gestionnaire@footpilot.fr` | `Gestionnaire123!` | GESTIONNAIRE |
-| `entraineur@footpilot.fr` | `Entraineur123!` | ENTRAINEUR |
-| `joueur1@footpilot.fr` | `Joueur123!` | JOUEUR |
-| `joueur2@footpilot.fr` | `Joueur123!` | JOUEUR |
 
 ## Conventions
 - All model names, API error messages, and UI text are in **French**

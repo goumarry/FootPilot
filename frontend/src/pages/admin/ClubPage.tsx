@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Camera, Shield } from 'lucide-react';
+import { Settings, Save, Camera, Shield, CreditCard, CheckCircle, AlertCircle, XCircle, Infinity, Info } from 'lucide-react';
 import { getClub, updateClub } from '@/api/clubs';
 import { uploadClubLogo } from '@/api/images';
+import { createSubscriptionCheckout, createPaymentCheckout, createPortalSession } from '@/api/billing';
 import type { Club } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { useBilling, EQUIPES_LIMIT, JOUEURS_LIMIT } from '@/contexts/BillingContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -12,6 +14,7 @@ import Input from '@/components/ui/Input';
 export default function ClubPage() {
   const { user } = useAuth();
   const { t } = useI18n();
+  const { billing, hasSubscription, hasUnlimitedCreation, refresh: refreshBilling } = useBilling();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [club, setClub] = useState<Club | null>(null);
   const [form, setForm] = useState({ nom: '', ville: '', description: '' });
@@ -20,6 +23,29 @@ export default function ClubPage() {
   const [saved, setSaved] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [error, setError] = useState('');
+  const [billingActionLoading, setBillingActionLoading] = useState<string | null>(null);
+
+  // Lecture du paramètre success après retour Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === '1') {
+      refreshBilling();
+      window.history.replaceState({}, '', '/admin/club?tab=abonnement');
+    }
+  }, [refreshBilling]);
+
+  async function handleBillingAction(action: 'subscription' | 'payment' | 'portal') {
+    setBillingActionLoading(action);
+    try {
+      let url: string;
+      if (action === 'subscription') ({ url } = await createSubscriptionCheckout());
+      else if (action === 'payment') ({ url } = await createPaymentCheckout());
+      else ({ url } = await createPortalSession());
+      window.location.href = url;
+    } catch {
+      setBillingActionLoading(null);
+    }
+  }
 
   useEffect(() => {
     if (!user?.clubId) return;
@@ -174,6 +200,103 @@ export default function ClubPage() {
                 {saved ? t('club.saved') : t('common.save')}
               </Button>
             </div>
+
+            {/* ── Section Abonnement ── */}
+            {billing && (
+              <div className="mt-8 border-t border-slate-700/40 pt-6 space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <CreditCard size={16} className="text-violet-400" />
+                  <p className="text-sm font-bold text-slate-200">{t('paywall.subscribeTitle')}</p>
+                </div>
+
+                {billing.isFounder && (
+                  <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+                    <Infinity size={18} className="text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-300 font-semibold">{t('paywall.founder')}</p>
+                  </div>
+                )}
+
+                {!billing.isFounder && (
+                  <>
+                    {/* Abonnement Premium */}
+                    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200">{t('paywall.subscriptionLabel')}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{t('paywall.subscribeDesc')}</p>
+                        </div>
+                        <SubscriptionBadge status={billing.subscriptionStatus} t={t} />
+                      </div>
+                      {user?.isOwner ? (
+                        hasSubscription ? (
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleBillingAction('portal')}
+                            loading={billingActionLoading === 'portal'}
+                          >
+                            {t('paywall.manageBtn')}
+                          </Button>
+                        ) : (
+                          <Button
+                            full
+                            onClick={() => handleBillingAction('subscription')}
+                            loading={billingActionLoading === 'subscription'}
+                          >
+                            {t('paywall.subscribeBtn')} — 4,99 €/mois
+                          </Button>
+                        )
+                      ) : !hasSubscription ? (
+                        <div className="flex items-start gap-2 bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2.5">
+                          <Info size={13} className="text-violet-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-slate-400">{t('paywall.contactOwner')}</p>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Pack Illimité */}
+                    <div className="bg-slate-800/50 border border-slate-700/40 rounded-xl px-4 py-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200">{t('paywall.scaleLabel')}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{t('paywall.scaleDesc')}</p>
+                        </div>
+                        {hasUnlimitedCreation ? (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            <CheckCircle size={11} /> {t('paywall.unlocked')}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-500">
+                            {t('paywall.teamsLimit')
+                              .replace('{current}', String(billing._count.equipes))
+                              .replace('{limit}', String(EQUIPES_LIMIT))}
+                            {' · '}
+                            {t('paywall.playersLimit')
+                              .replace('{current}', String(billing._count.joueurs))
+                              .replace('{limit}', String(JOUEURS_LIMIT))}
+                          </span>
+                        )}
+                      </div>
+                      {!hasUnlimitedCreation && (
+                        user?.isOwner ? (
+                          <Button
+                            full
+                            onClick={() => handleBillingAction('payment')}
+                            loading={billingActionLoading === 'payment'}
+                          >
+                            {t('paywall.unlockBtn')}
+                          </Button>
+                        ) : (
+                          <div className="flex items-start gap-2 bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2.5">
+                            <Info size={13} className="text-violet-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-slate-400">{t('paywall.contactOwner')}</p>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -187,5 +310,36 @@ function Stat({ label, value }: { label: string; value: number }) {
       <p className="text-2xl font-extrabold text-slate-100">{value}</p>
       <p className="text-xs text-slate-500 mt-0.5">{label}</p>
     </div>
+  );
+}
+
+type TFn = (key: string) => string;
+
+function SubscriptionBadge({ status, t }: { status: string; t: TFn }) {
+  if (status === 'active') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
+        <CheckCircle size={11} /> {t('paywall.active')}
+      </span>
+    );
+  }
+  if (status === 'past_due') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
+        <AlertCircle size={11} /> {t('paywall.past_due')}
+      </span>
+    );
+  }
+  if (status === 'canceled') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
+        <XCircle size={11} /> {t('paywall.canceled')}
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs font-semibold text-slate-500 bg-slate-800/60 border border-slate-700/40 px-2 py-0.5 rounded-full flex-shrink-0">
+      {t('paywall.free')}
+    </span>
   );
 }

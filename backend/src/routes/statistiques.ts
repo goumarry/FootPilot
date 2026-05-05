@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { verifyToken } from '../middleware/auth';
+import { requireSubscription } from '../middleware/billing';
 
 const router = Router();
 router.use(verifyToken);
+router.use(requireSubscription);
 
 const joueurStatsInclude = {
   user: { select: { firstName: true, lastName: true } },
@@ -27,10 +29,8 @@ function countBy(presences: PresenceRow[], statut: string): number {
 
 function computeStats(joueur: {
   id: string;
-  firstName: string | null;
-  lastName: string | null;
   poste: string | null;
-  user?: { firstName: string; lastName: string } | null;
+  user: { firstName: string; lastName: string };
   butsPasses: unknown[];
   presences: PresenceRow[];
 }) {
@@ -44,8 +44,8 @@ function computeStats(joueur: {
   return {
     joueur: {
       id: joueur.id,
-      firstName: joueur.user?.firstName ?? joueur.firstName ?? '',
-      lastName: joueur.user?.lastName ?? joueur.lastName ?? '',
+      firstName: joueur.user.firstName,
+      lastName: joueur.user.lastName,
       poste: joueur.poste,
     },
     entrainements: {

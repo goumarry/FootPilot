@@ -52,6 +52,36 @@ export async function sendInvitationEmail(opts: {
   });
 }
 
+export async function sendEmailVerificationMail(opts: {
+  to: string;
+  firstName: string;
+  token: string;
+}) {
+  const link = `${APP_URL}/verify-email/${opts.token}`;
+
+  await transporter.sendMail({
+    from: FROM,
+    to: opts.to,
+    subject: 'FootPilot — Confirmez votre adresse e-mail',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+        <h2 style="color:#4C1D95;">FootPilot</h2>
+        <p>Bonjour <strong>${opts.firstName}</strong>,</p>
+        <p>Merci pour votre inscription. Cliquez sur le bouton ci-dessous pour confirmer votre adresse e-mail et activer votre compte :</p>
+        <a href="${link}"
+           style="display:inline-block;margin:16px 0;padding:12px 24px;background:#6D28D9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">
+          Confirmer mon adresse e-mail
+        </a>
+        <p style="color:#9390B0;font-size:12px;">Ce lien expire dans 24 heures.</p>
+        <p style="color:#9390B0;font-size:12px;">
+          Ou copiez ce lien : <a href="${link}">${link}</a>
+        </p>
+        <p style="color:#9390B0;font-size:12px;">Si vous n'avez pas créé de compte FootPilot, ignorez cet e-mail.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendActualiteEmail(opts: {
   to: string[];
   clubNom: string;

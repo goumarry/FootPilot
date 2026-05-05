@@ -37,6 +37,10 @@ services:
       SMTP_FROM: "FootPilot <footpilot.notifications@gmail.com>"
       APP_URL: http://localhost:3000
       CORS_ORIGIN: http://localhost:3000
+      STRIPE_SECRET_KEY: sk_test_51TTn9K2OZ7hHGPfzODX6oDwTCgrzY5NxFzzeuwRu9qrkKCZsWDybLpQRsLJtv7SMWqh7RNasPAHnnicrCMI7Tq0a00CRsNNYyc
+      STRIPE_WEBHOOK_SECRET: whsec_ff17148cc0e061331e363a02bbecc4cccfbf354268446b113a907ab7b62af253
+      STRIPE_SUBSCRIPTION_PRICE_ID: price_1TTnEj2OZ7hHGPfzV4KfGQ3U
+      STRIPE_PAYMENT_PRICE_ID: price_1TTnF42OZ7hHGPfzVur95MSA
     depends_on:
       db:
         condition: service_healthy

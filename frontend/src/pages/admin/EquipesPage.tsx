@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, FolderOpen, Plus, Pencil, Trash2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Shield, FolderOpen, Plus, Pencil, Trash2, ChevronRight, AlertCircle, Lock, Info } from 'lucide-react';
 import { getEquipes, createEquipe, updateEquipe, deleteEquipe } from '@/api/equipes';
 import { getCategories, createCategorie, updateCategorie, deleteCategorie } from '@/api/categories';
+import { createPaymentCheckout } from '@/api/billing';
 import type { Equipe, Categorie } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { useBilling, EQUIPES_LIMIT } from '@/contexts/BillingContext';
 import AppLayout from '@/layouts/AppLayout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -17,6 +19,7 @@ export default function EquipesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useI18n();
+  const { hasUnlimitedCreation } = useBilling();
   const isGestionnaire = user?.role === 'GESTIONNAIRE';
   const isCoach = user?.role === 'ENTRAINEUR';
 
@@ -24,6 +27,8 @@ export default function EquipesPage() {
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitUpgradeLoading, setLimitUpgradeLoading] = useState(false);
 
   // Category modal state
   const [showCatModal, setShowCatModal] = useState(false);
@@ -120,7 +125,21 @@ export default function EquipesPage() {
 
   // ── Team CRUD ──────────────────────────────────────────────────────────────
 
+  async function handleUpgradeLimit() {
+    setLimitUpgradeLoading(true);
+    try {
+      const { url } = await createPaymentCheckout();
+      window.location.href = url;
+    } catch {
+      setLimitUpgradeLoading(false);
+    }
+  }
+
   function openCreateTeam(categorieId: string) {
+    if (!hasUnlimitedCreation && equipes.length >= EQUIPES_LIMIT) {
+      setShowLimitModal(true);
+      return;
+    }
     setEditingTeam(null);
     setTeamCategorieId(categorieId);
     setTeamForm({ nomEquipe: '', niveauChampionnat: '' });
@@ -191,7 +210,8 @@ export default function EquipesPage() {
     });
   }
 
-  // ── Drag & Drop (GESTIONNAIRE only) ───────────────────────────────────────
+  // ── Drag & Drop ───────────────────────────────────────────────────────────
+  // GESTIONNAIRE : toutes les équipes. ENTRAINEUR : ses équipes uniquement.
 
   async function handleDrop(newCategorieId: string) {
     if (!draggedEquipeId) return;
@@ -226,12 +246,25 @@ export default function EquipesPage() {
             </p>
             <h1 className="text-2xl font-extrabold text-slate-50">{t('teams.title')}</h1>
           </div>
-          {isGestionnaire && (
-            <Button onClick={openCreateCat}>
-              <Plus size={15} />
-              <span>{t('categories.createCategory')}</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {!hasUnlimitedCreation && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                equipes.length >= EQUIPES_LIMIT
+                  ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                  : 'text-slate-400 border-slate-600/40 bg-slate-800/50'
+              }`}>
+                {t('paywall.teamsLimit')
+                  .replace('{current}', String(equipes.length))
+                  .replace('{limit}', String(EQUIPES_LIMIT))}
+              </span>
+            )}
+            {isGestionnaire && (
+              <Button onClick={openCreateCat}>
+                <Plus size={15} />
+                <span>{t('categories.createCategory')}</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -318,11 +351,12 @@ export default function EquipesPage() {
                         (isCoach || isGestionnaire) &&
                         (eq.entraineurs?.some((e) => e.entraineur.userId === user?.id) ?? false);
                       const canEdit = isMyTeam;
+                      const canDrag = isGestionnaire || (isCoach && isMyTeam);
 
                       return (
                         <div
                           key={eq.id}
-                          draggable={isGestionnaire && isMyTeam}
+                          draggable={canDrag}
                           onDragStart={(e) => {
                             e.dataTransfer.setData('equipeId', eq.id);
                             setDraggedEquipeId(eq.id);
@@ -340,7 +374,7 @@ export default function EquipesPage() {
                               : !isCoach
                               ? 'bg-slate-800/50 border-slate-700/40 hover:border-slate-600/60 hover:bg-slate-800/70'
                               : 'bg-slate-800/25 border-slate-700/20 hover:border-slate-600/30 hover:bg-slate-800/40'
-                          } ${isGestionnaire && isMyTeam ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                          } ${canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                         >
                           <div
                             className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -495,6 +529,47 @@ export default function EquipesPage() {
         onConfirm={dialog?.onConfirm}
         onClose={() => setDialog(null)}
       />
+
+      {/* Modale limite équipes */}
+      <Modal
+        open={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        title={t('paywall.limitsTitle')}
+        size="sm"
+      >
+        <div className="flex flex-col items-center gap-4 py-2 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center">
+            <Lock size={22} className="text-amber-400" />
+          </div>
+          <p className="text-sm text-slate-300">{t('paywall.scaleDesc')}</p>
+          {user?.isOwner ? (
+            <>
+              <Button full onClick={handleUpgradeLimit} loading={limitUpgradeLoading}>
+                {t('paywall.unlockBtn')}
+              </Button>
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex items-start gap-2 bg-slate-800/60 border border-slate-700/40 rounded-xl px-4 py-3 text-left w-full">
+                <Info size={14} className="text-violet-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-400">{t('paywall.contactOwner')}</p>
+              </div>
+              <button
+                onClick={() => setShowLimitModal(false)}
+                className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+            </>
+          )}
+        </div>
+      </Modal>
     </AppLayout>
   );
 }

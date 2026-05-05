@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { I18nProvider } from '@/contexts/I18nContext';
+import { ChatProvider } from '@/contexts/ChatContext';
+import { BillingProvider } from '@/contexts/BillingContext';
 import RequireAuth from '@/components/layout/RequireAuth';
 
 // Public
@@ -9,6 +11,7 @@ import SplashPage from '@/pages/SplashPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import CreateClubPage from '@/pages/CreateClubPage';
+import VerifyEmailPage from '@/pages/VerifyEmailPage';
 
 // Gestionnaire
 import AdminDashboardPage from '@/pages/admin/DashboardPage';
@@ -44,6 +47,8 @@ export default function App() {
       <I18nProvider>
       <ThemeProvider>
       <AuthProvider>
+      <BillingProvider>
+      <ChatProvider>
         <Routes>
           {/* ── Public ── */}
           <Route path="/" element={<SplashPage />} />
@@ -53,6 +58,7 @@ export default function App() {
           <Route path="/create-club" element={<CreateClubPage />} />
           <Route path="/join" element={<JoinPage />} />
           <Route path="/join/:code" element={<JoinPage />} />
+          <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
           {/* ── Gestionnaire + Entraîneur ── */}
           <Route
@@ -214,6 +220,8 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+      </ChatProvider>
+      </BillingProvider>
       </AuthProvider>
       </ThemeProvider>
       </I18nProvider>

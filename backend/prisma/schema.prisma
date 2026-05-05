@@ -39,6 +39,12 @@ enum StatutPresence {
   BLESSE
 }
 
+enum ChatRoomType {
+  EQUIPE
+  STAFF
+  DIRECTION
+}
+
 enum ZoneTir {
   TETE
   PIED_GAUCHE
@@ -74,26 +80,32 @@ model JoinCode {
 }
 
 model User {
-  id         String    @id @default(cuid())
-  email      String    @unique
-  password   String
-  firstName  String
-  lastName   String
-  role       Role      @default(JOUEUR)
-  birthDate  DateTime?
-  profilePic String?
-  phone      String?
-  isActive   Boolean   @default(true)
-  clubId     String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          Role      @default(JOUEUR)
+  birthDate     DateTime?
+  profilePic    String?
+  phone         String?
+  isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(true)
+  isManual      Boolean   @default(false)
+  clubId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  club               Club?        @relation(fields: [clubId], references: [id])
-  invitationsCreated Invitation[] @relation("InvitationCreator")
-  joinCodesCreated   JoinCode[]   @relation("JoinCodeCreator")
-  actualites         Actualite[]  @relation("ActualiteAuteur")
+  club               Club?                   @relation(fields: [clubId], references: [id])
+  ownedClubs         Club[]                  @relation("ClubOwner")
+  invitationsCreated Invitation[]            @relation("InvitationCreator")
+  joinCodesCreated   JoinCode[]              @relation("JoinCodeCreator")
+  actualites         Actualite[]             @relation("ActualiteAuteur")
   joueurProfile      Joueur?
   entraineurProfile  Entraineur?
+  chatMessages       ChatMessage[]
+  chatReceipts       ChatReadReceipt[]
+  emailVerifToken    EmailVerificationToken?
 }
 
 model Club {
@@ -102,9 +114,16 @@ model Club {
   ville       String
   logoUrl     String?
   description String?
+  idOwner     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  stripeCustomerId   String?  @unique @map("stripe_customer_id")
+  subscriptionStatus String   @default("free") @map("subscription_status")
+  hasUnlockedLimits  Boolean  @default(false) @map("has_unlocked_limits")
+  isFounder          Boolean  @default(false) @map("is_founder")
+
+  owner       User?        @relation("ClubOwner", fields: [idOwner], references: [id], onDelete: SetNull)
   users       User[]
   categories  Categorie[]
   equipes     Equipe[]
@@ -113,6 +132,7 @@ model Club {
   invitations Invitation[]
   actualites  Actualite[]
   joinCodes   JoinCode[]
+  chatRooms   ChatRoom[]
 }
 
 model Categorie {
@@ -139,22 +159,19 @@ model Equipe {
   entraineurs EntraineurEquipe[]
   evenements  Evenement[]
   actualites  Actualite[]
+  chatRoom    ChatRoom?
 }
 
-// firstName/lastName sont null quand userId est défini (le nom vient de User).
-// Ils sont requis (non-null) uniquement pour les joueurs ajoutés manuellement sans compte.
 model Joueur {
   id            String    @id @default(cuid())
-  userId        String?   @unique
+  userId        String    @unique
   clubId        String
-  firstName     String?
-  lastName      String?
   birthDate     DateTime
   poste         Poste?
   numeroMaillot Int?
   photoUrl      String?
 
-  user  User?  @relation(fields: [userId], references: [id])
+  user  User   @relation(fields: [userId], references: [id])
   club  Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
   equipes     JoueurEquipe[]
@@ -177,6 +194,7 @@ model Entraineur {
 }
 
 model JoueurEquipe {
+  id        String    @id @default(cuid())
   joueurId  String
   equipeId  String
   dateDebut DateTime  @default(now())
@@ -185,7 +203,8 @@ model JoueurEquipe {
   joueur Joueur @relation(fields: [joueurId], references: [id], onDelete: Cascade)
   equipe Equipe @relation(fields: [equipeId], references: [id], onDelete: Cascade)
 
-  @@id([joueurId, equipeId])
+  @@index([joueurId, equipeId])
+  @@index([equipeId, dateFin])
 }
 
 model EntraineurEquipe {
@@ -271,6 +290,51 @@ model Actualite {
   auteur User    @relation("ActualiteAuteur", fields: [auteurId], references: [id])
   club   Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
   equipe Equipe? @relation(fields: [equipeId], references: [id])
+}
+
+model ChatRoom {
+  id        String       @id @default(cuid())
+  type      ChatRoomType
+  clubId    String
+  equipeId  String?      @unique
+  createdAt DateTime     @default(now())
+
+  club     Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  equipe   Equipe?          @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+  receipts ChatReadReceipt[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  roomId    String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User     @relation(fields: [senderId], references: [id])
+}
+
+model ChatReadReceipt {
+  userId     String
+  roomId     String
+  lastReadAt DateTime @default(now())
+
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roomId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Invitation {

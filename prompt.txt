@@ -1,36 +1,9 @@
-Refactoring Base de données & Logique Métier : Historisation des équipes (Correction du bug de Snapshot)
+index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/subscription 502 (Bad Gateway)
 
-Contexte & Problème :
-Actuellement, les fiches d'appel (snapshots) des événements (matchs/entraînements) sont générées en "lazy loading" au moment où un utilisateur ouvre l'événement. Si un joueur quitte l'équipe ou est transféré avant que quelqu'un n'ouvre l'événement passé, le joueur n'apparaît pas sur la feuille de match car l'API se base sur les joueurs actuellement rattachés à l'équipe.
+index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/subscription 502 (Bad Gateway)
 
-Solution à implémenter : Historisation des liaisons Joueur-Équipe
-Nous devons arrêter de supprimer physiquement les liaisons entre les joueurs et les équipes, et passer sur un système de dates de validité.
+index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/payment 502 (Bad Gateway)
 
-1. Mise à jour de la Base de Données (Table pivot Joueur <-> Équipe) :
+index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/payment 502 (Bad Gateway)
 
-Ajouter deux colonnes dans la table de liaison entre les joueurs et les équipes :
-
-date_entree (Date/Time, par défaut à la date de création de la ligne).
-
-date_sortie (Date/Time, nullable, par défaut à null).
-
-2. Mise à jour de la logique des requêtes (CRUD Équipes) :
-
-Ajout d'un joueur dans une équipe : Créer la ligne normalement (date_entree = maintenant, date_sortie = null).
-
-Retrait/Transfert d'un joueur : Ne plus faire de DELETE (Hard delete). À la place, faire un UPDATE de la ligne existante en passant date_sortie = now().
-
-Affichage de l'effectif actuel (Dashboard, vues équipes, etc.) : Mettre à jour toutes les requêtes qui récupèrent les joueurs d'une équipe pour filtrer systématiquement avec la condition : date_sortie IS NULL.
-
-3. Correction de la génération des Snapshots (Le correctif du bug) :
-
-Lorsqu'un match ou entraînement est ouvert et qu'il faut générer la fiche d'appel initiale (le snapshot), la requête ne doit plus chercher "les joueurs actuels de l'équipe".
-
-Nouvelle requête de snapshot : Récupérer les joueurs liés à l'équipe dont la validité englobe la date de l'événement :
-date_entree <= date_de_levenement AND (date_sortie IS NULL OR date_sortie >= date_de_levenement).
-
-4. Instructions de code & Nettoyage (Clean Code) :
-
-S'assurer que la migration de base de données gère bien les données existantes (mettre date_entree à la date de création de l'équipe ou du club pour les anciens joueurs, et laisser date_sortie à null).
-
-NETTOYAGE STRICT : Je veux que tu nettoies scrupuleusement l'ancienne structure et l'ancien code qui ne sont plus bons. Supprime toute la logique obsolète liée à l'ancienne façon de faire les snapshots et assure-toi que la suppression physique (DELETE) n'est plus utilisée nulle part pour retirer un joueur de son équipe. Ne laisse aucun code mort.
+Je pense que tu n'as pas rajouter les variables du backend/.env dans le docker-compose donc stripe ne peut pas marcher

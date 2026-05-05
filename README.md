@@ -28,19 +28,6 @@ docker compose down -v     # Arrêter + supprimer la base de données
 
 ---
 
-## Comptes de test
-
-Créés automatiquement au démarrage par le seed.
-
-| Email | Mot de passe | Rôle |
-|---|---|---|
-| `gestionnaire@footpilot.fr` | `Gestionnaire123!` | Gestionnaire |
-| `entraineur@footpilot.fr` | `Entraineur123!` | Entraîneur |
-| `joueur1@footpilot.fr` | `Joueur123!` | Joueur |
-| `joueur2@footpilot.fr` | `Joueur123!` | Joueur |
-
----
-
 ## Rôles
 
 | Rôle | Qui | Accès |
@@ -86,7 +73,6 @@ cd backend
 cp .env.example .env          # Vérifier DATABASE_URL et JWT_SECRET
 npm install
 npx prisma db push            # Synchroniser le schéma
-npm run db:seed               # Injecter les données de test
 npm run dev                   # Hot-reload sur http://localhost:3001
 ```
 
@@ -203,8 +189,7 @@ npm run dev                   # Hot-reload sur http://localhost:3000
 foot-manger/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma       # Modèles de données (source de vérité)
-│   │   └── seed.ts             # Données de test
+│   │   └── schema.prisma       # Modèles de données (source de vérité)
 │   └── src/
 │       ├── middleware/auth.ts  # Vérification JWT + contrôle des rôles
 │       ├── lib/
@@ -312,9 +297,6 @@ cd backend && npx prisma db push
 
 # Régénérer les types TypeScript Prisma (après modification du schema)
 cd backend && npx prisma generate
-
-# Remettre les données de test à zéro
-cd backend && npm run db:seed
 
 # Ouvrir Prisma Studio (interface graphique de la base)
 cd backend && npm run db:studio

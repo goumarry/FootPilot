@@ -27,12 +27,19 @@ export default function PlanningPage() {
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [selected, setSelected] = useState<Evenement | null>(null);
+  const [daysCount, setDaysCount] = useState<7 | 28>(() => window.innerWidth < 768 ? 7 : 28);
+
+  useEffect(() => {
+    function onResize() { setDaysCount(window.innerWidth < 768 ? 7 : 28); }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     getEvenements().then(setEvenements).finally(() => setLoading(false));
   }, []);
 
-  const days = useMemo(() => Array.from({ length: 28 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const days = useMemo(() => Array.from({ length: daysCount }, (_, i) => addDays(weekStart, i)), [weekStart, daysCount]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, Evenement[]>();
@@ -49,7 +56,7 @@ export default function PlanningPage() {
   const windowLabel = (() => {
     const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' };
     const loc = locale === 'fr' ? 'fr-FR' : 'en-GB';
-    return `${weekStart.toLocaleDateString(loc, opts)} — ${addDays(weekStart, 27).toLocaleDateString(loc, { ...opts, year: 'numeric' })}`;
+    return `${weekStart.toLocaleDateString(loc, opts)} — ${addDays(weekStart, daysCount - 1).toLocaleDateString(loc, { ...opts, year: 'numeric' })}`;
   })();
 
   return (
@@ -63,14 +70,14 @@ export default function PlanningPage() {
         {/* Navigation */}
         <div className="flex items-center gap-3 mb-3">
           <button
-            onClick={() => setWeekStart((d) => addDays(d, -28))}
+            onClick={() => setWeekStart((d) => addDays(d, -daysCount))}
             className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors"
           >
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-semibold text-slate-300 flex-1 text-center">{windowLabel}</span>
           <button
-            onClick={() => setWeekStart((d) => addDays(d, 28))}
+            onClick={() => setWeekStart((d) => addDays(d, daysCount))}
             className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 transition-colors"
           >
             <ChevronRight size={16} />
@@ -79,7 +86,64 @@ export default function PlanningPage() {
 
         {loading ? (
           <div className="text-center py-16 text-slate-500 text-sm">{t('planning.loading')}</div>
+        ) : daysCount === 7 ? (
+          // Mobile : vue verticale (jours empilés, une semaine)
+          <div className="space-y-1.5">
+            {days.map((day) => {
+              const key = day.toDateString();
+              const dayEvents = eventsByDay.get(key) ?? [];
+              const isToday = isSameDay(day, today);
+              const isPastDay = day < new Date(today.toDateString());
+              const dayIndex = (day.getDay() + 6) % 7;
+              return (
+                <div
+                  key={key}
+                  className={`flex gap-3 rounded-xl border px-3 py-2.5 ${
+                    isToday
+                      ? 'border-violet-500/50 bg-violet-500/8'
+                      : isPastDay
+                      ? 'border-slate-700/20 bg-slate-800/20 opacity-70'
+                      : 'border-slate-700/30 bg-slate-800/30'
+                  }`}
+                >
+                  <div className="w-10 flex-shrink-0 text-center pt-0.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">{DAY_LABELS_FR[dayIndex]}</p>
+                    <p className={`text-xl font-extrabold leading-none mt-0.5 ${isToday ? 'text-violet-400' : isPastDay ? 'text-slate-600' : 'text-slate-300'}`}>
+                      {day.getDate()}
+                    </p>
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1 py-0.5">
+                    {dayEvents.map((ev) => {
+                      const evStatut = getStatut(ev);
+                      const isMatch = ev.type === 'MATCH';
+                      return (
+                        <button
+                          key={ev.id}
+                          onClick={() => setSelected(ev)}
+                          className={`w-full text-left flex items-center gap-2 rounded-lg px-2.5 py-1.5 transition-opacity hover:opacity-80 ${
+                            ev.annule ? 'bg-red-500/10 opacity-60'
+                            : evStatut === 'EN_COURS' ? (isMatch ? 'bg-violet-500/25' : 'bg-emerald-500/20')
+                            : isMatch ? 'bg-violet-500/10' : 'bg-emerald-500/8'
+                          }`}
+                        >
+                          <span className={`text-[9px] font-bold w-4 flex-shrink-0 ${ev.annule ? 'text-red-400/60' : isMatch ? 'text-violet-400' : 'text-emerald-400'}`}>
+                            {isMatch ? 'M' : 'E'}
+                          </span>
+                          <span className={`text-xs truncate ${ev.annule ? 'text-slate-500 line-through' : isMatch ? 'text-violet-200' : 'text-emerald-300'}`}>
+                            {new Date(ev.dateHeure).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            {ev.equipe && ` · ${ev.equipe.nomEquipe}`}
+                            {isMatch && ev.adversaire && ` vs ${ev.adversaire}`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
+          // Desktop : grille 7 colonnes (4 semaines)
           <>
             <div className="grid grid-cols-7 gap-1 mb-1">
               {DAY_LABELS_FR.map((d, i) => (

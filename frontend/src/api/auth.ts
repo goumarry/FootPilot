@@ -6,10 +6,6 @@ interface AuthResponse {
   user: User;
 }
 
-interface CreateClubResponse extends AuthResponse {
-  club: { id: string; nom: string; ville: string };
-}
-
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const { data } = await client.post<AuthResponse>('/auth/login', { email, password });
   return data;
@@ -50,7 +46,12 @@ export async function createClub(payload: {
   password: string;
   firstName: string;
   lastName: string;
-}): Promise<CreateClubResponse> {
-  const { data } = await client.post<CreateClubResponse>('/auth/create-club', payload);
+}): Promise<{ message: string }> {
+  const { data } = await client.post<{ message: string }>('/auth/create-club', payload);
+  return data;
+}
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  const { data } = await client.post<{ message: string }>('/auth/verify-email', { token });
   return data;
 }

@@ -17,7 +17,10 @@ export interface User {
   birthDate?: string | null;
   createdAt?: string;
   isActive?: boolean;
+  isOwner?: boolean;
 }
+
+export type SubscriptionStatus = 'free' | 'active' | 'past_due' | 'canceled';
 
 export interface Club {
   id: string;
@@ -26,6 +29,9 @@ export interface Club {
   logoUrl?: string | null;
   description?: string | null;
   createdAt: string;
+  subscriptionStatus?: SubscriptionStatus;
+  hasUnlockedLimits?: boolean;
+  isFounder?: boolean;
   _count?: { categories: number; equipes: number; joueurs: number; users: number };
 }
 
@@ -185,6 +191,32 @@ export interface Invitation {
   usedAt?: string | null;
   createdAt: string;
   creator?: { firstName: string; lastName: string };
+}
+
+export type ChatRoomType = 'EQUIPE' | 'STAFF' | 'DIRECTION';
+
+export interface ChatRoom {
+  id: string;
+  type: ChatRoomType;
+  nom: string;
+  unreadCount: number;
+  lastMessage: {
+    content: string;
+    senderName: string;
+    createdAt: string;
+  } | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  senderInitials: string;
+  senderPic?: string | null;
+  content: string;
+  createdAt: string;
+  isOwn: boolean;
 }
 
 export const ROLE_LABELS: Record<Role, string> = {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { verifyToken, requireRole } from '../middleware/auth';
+import { checkClubLimits } from '../middleware/billing';
 
 const router = Router();
 router.use(verifyToken);
@@ -76,8 +77,6 @@ router.get('/:id', async (req, res) => {
           joueur: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
               poste: true,
               numeroMaillot: true,
               photoUrl: true,
@@ -105,15 +104,17 @@ router.get('/:id', async (req, res) => {
 
   const result = {
     ...equipe,
-    joueurs: equipe.joueurs.map((je) => ({
-      ...je,
-      joueur: {
-        ...je.joueur,
-        firstName: je.joueur.user?.firstName ?? je.joueur.firstName ?? '',
-        lastName: je.joueur.user?.lastName ?? je.joueur.lastName ?? '',
-        user: undefined,
-      },
-    })),
+    joueurs: equipe.joueurs.map((je) => {
+      const { user, ...joueurRest } = je.joueur;
+      return {
+        ...je,
+        joueur: {
+          ...joueurRest,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+      };
+    }),
     entraineurs: equipe.entraineurs.map((ee) => ({
       ...ee,
       entraineur: {
@@ -129,7 +130,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/equipes
-router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, res) => {
+router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), checkClubLimits('equipes'), async (req, res) => {
   const parsed = equipeSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ message: 'Données invalides.', errors: parsed.error.flatten() });
@@ -159,7 +160,12 @@ router.post('/', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, re
     data: { entraineurId: creatorEntraineur.id, equipeId: equipe.id },
   });
 
-  return res.status(201).json(equipe);
+  // Renvoyer l'équipe avec entraineurs + _count pour que le front affiche immédiatement le statut "mon équipe"
+  return res.status(201).json({
+    ...equipe,
+    _count: { joueurs: 0, entraineurs: 1 },
+    entraineurs: [{ entraineur: { userId: req.user!.userId } }],
+  });
 });
 
 // PUT /api/equipes/:id
@@ -175,7 +181,8 @@ router.put('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (req, 
     return res.status(403).json({ message: 'Accès interdit.' });
   }
 
-  if (!(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
+  const isGestionnaire = req.user!.role === Role.GESTIONNAIRE;
+  if (!isGestionnaire && !(await userIsCoachOfTeam(req.user!.userId, req.user!.clubId!, req.params.id))) {
     return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
@@ -217,17 +224,15 @@ router.post('/:id/joueurs', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), asy
     return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
-  const existing = await prisma.joueurEquipe.findUnique({
-    where: { joueurId_equipeId: { joueurId: parsed.data.joueurId, equipeId: req.params.id } },
+  const activeInThisTeam = await prisma.joueurEquipe.findFirst({
+    where: { joueurId: parsed.data.joueurId, equipeId: req.params.id, dateFin: null },
   });
-  if (existing && !existing.dateFin) {
+  if (activeInThisTeam) {
     return res.status(409).json({ message: 'Joueur déjà dans cette équipe.' });
   }
 
-  const record = await prisma.joueurEquipe.upsert({
-    where: { joueurId_equipeId: { joueurId: parsed.data.joueurId, equipeId: req.params.id } },
-    update: { dateFin: null, dateDebut: new Date() },
-    create: { joueurId: parsed.data.joueurId, equipeId: req.params.id },
+  const record = await prisma.joueurEquipe.create({
+    data: { joueurId: parsed.data.joueurId, equipeId: req.params.id },
   });
   return res.status(201).json(record);
 });
@@ -238,8 +243,15 @@ router.delete('/:id/joueurs/:joueurId', requireRole(Role.GESTIONNAIRE, Role.ENTR
     return res.status(403).json({ message: 'Vous devez être entraîneur de cette équipe.' });
   }
 
+  const activeRecord = await prisma.joueurEquipe.findFirst({
+    where: { joueurId: req.params.joueurId, equipeId: req.params.id, dateFin: null },
+  });
+  if (!activeRecord) {
+    return res.status(404).json({ message: 'Joueur introuvable dans cette équipe.' });
+  }
+
   await prisma.joueurEquipe.update({
-    where: { joueurId_equipeId: { joueurId: req.params.joueurId, equipeId: req.params.id } },
+    where: { id: activeRecord.id },
     data: { dateFin: new Date() },
   });
   return res.json({ message: "Joueur retiré de l'équipe." });

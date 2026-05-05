@@ -13,11 +13,18 @@ import statistiquesRouter from './routes/statistiques';
 import actualitesRouter from './routes/actualites';
 import imagesRouter from './routes/images';
 import joinCodesRouter from './routes/join-codes';
+import chatRouter from './routes/chat';
+import billingRouter from './routes/billing';
+import webhooksRouter from './routes/webhooks';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? '*', credentials: true }));
+
+// Le webhook Stripe nécessite le corps brut — doit être monté AVANT express.json
+app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -35,6 +42,8 @@ app.use('/api/statistiques', statistiquesRouter);
 app.use('/api/actualites', actualitesRouter);
 app.use('/api/images', imagesRouter);
 app.use('/api/join-codes', joinCodesRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/billing', billingRouter);
 
 app.use((_req, res) => res.status(404).json({ message: 'Route introuvable.' }));
 

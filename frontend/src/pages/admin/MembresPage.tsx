@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Plus, Trash2, Copy, Check, Mail, UserCheck, UserX, Key, Clock } from 'lucide-react';
-import { getUsers, getInvitations, createInvitation, deleteInvitation, toggleUserActive } from '@/api/admin';
+import { Users, Plus, Trash2, Copy, Check, Mail, UserCheck, UserX, Key, Clock, ShieldCheck } from 'lucide-react';
+import {
+  getUsers, getInvitations, createInvitation, deleteInvitation,
+  toggleUserActive, deleteUser, updateUserRole,
+} from '@/api/admin';
 import { getJoinCodes, createJoinCode, deleteJoinCode } from '@/api/join-codes';
 import type { User, Invitation, Role, JoinCode } from '@/types';
 import { useI18n } from '@/contexts/I18nContext';
@@ -29,6 +32,7 @@ function timeLeft(dateStr: string): string {
 export default function MembresPage() {
   const { user: currentUser } = useAuth();
   const { t } = useI18n();
+  const isGestionnaire = currentUser?.role === 'GESTIONNAIRE';
   const isEntraineur = currentUser?.role === 'ENTRAINEUR';
 
   const [tab, setTab] = useState<Tab>('membres');
@@ -46,6 +50,8 @@ export default function MembresPage() {
   const [formError, setFormError] = useState('');
   const [dialog, setDialog] = useState<DialogConfig | null>(null);
 
+  const isCurrentUserOwner = users.find((u) => u.id === currentUser?.id)?.isOwner ?? false;
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -60,14 +66,8 @@ export default function MembresPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  function copyLink(token: string, id: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/register/${token}`);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
   function copyCode(code: string, id: string) {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(`${window.location.origin}/join?code=${code}`);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   }
@@ -144,6 +144,34 @@ export default function MembresPage() {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isActive: updated.isActive } : u)));
   }
 
+  function handleDeleteMember(u: User) {
+    setDialog({
+      title: t('members.deleteMemberTitle'),
+      message: t('members.deleteMemberConfirm').replace('{name}', `${u.firstName} ${u.lastName}`),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      onConfirm: async () => {
+        setDialog(null);
+        await deleteUser(u.id);
+        setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      },
+    });
+  }
+
+  function handlePromote(u: User) {
+    setDialog({
+      title: t('members.promoteTitle'),
+      message: t('members.promoteConfirm').replace('{name}', `${u.firstName} ${u.lastName}`),
+      variant: 'warning',
+      confirmLabel: t('members.promoteConfirmBtn'),
+      onConfirm: async () => {
+        setDialog(null);
+        const updated = await updateUserRole(u.id, 'GESTIONNAIRE');
+        setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...updated } : x)));
+      },
+    });
+  }
+
   const now = new Date();
   const activeCodes = joinCodes.filter((c) => new Date(c.expiresAt) > now);
 
@@ -204,17 +232,56 @@ export default function MembresPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-200">{u.firstName} {u.lastName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-200">{u.firstName} {u.lastName}</p>
+                      {u.isOwner && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          {t('members.owner')}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 truncate">{u.email}</p>
                   </div>
                   <RoleBadge role={u.role} />
-                  <button
-                    onClick={() => handleToggleActive(u.id, u.isActive ?? true)}
-                    className="text-slate-500 hover:text-slate-300 transition-colors"
-                    title={u.isActive ? t('members.disable') : t('members.reactivate')}
-                  >
-                    {u.isActive ? <UserCheck size={16} /> : <UserX size={16} className="text-red-400" />}
-                  </button>
+
+                  {/* Promotion ENTRAINEUR → GESTIONNAIRE (gestionnaire uniquement) */}
+                  {isGestionnaire && u.role === 'ENTRAINEUR' && u.id !== currentUser?.id && (
+                    <button
+                      onClick={() => handlePromote(u)}
+                      className="text-slate-500 hover:text-violet-400 transition-colors"
+                      title={t('members.promoteTitle')}
+                    >
+                      <ShieldCheck size={16} />
+                    </button>
+                  )}
+
+                  {/* Activer / désactiver — hiérarchie: ENTRAINEUR→JOUEUR; GESTIONNAIRE→JOUEUR+ENTRAINEUR; owner→tous */}
+                  {u.id !== currentUser?.id && (
+                    (isEntraineur && u.role === 'JOUEUR') ||
+                    (isGestionnaire && (u.role !== 'GESTIONNAIRE' || isCurrentUserOwner))
+                  ) && (
+                    <button
+                      onClick={() => handleToggleActive(u.id, u.isActive ?? true)}
+                      className="text-slate-500 hover:text-slate-300 transition-colors"
+                      title={u.isActive ? t('members.disable') : t('members.reactivate')}
+                    >
+                      {u.isActive ? <UserCheck size={16} /> : <UserX size={16} className="text-red-400" />}
+                    </button>
+                  )}
+
+                  {/* Suppression hard-delete — GESTIONNAIRE: JOUEUR+ENTRAINEUR (owner: tous); ENTRAINEUR: JOUEUR uniquement */}
+                  {u.id !== currentUser?.id && (
+                    (isGestionnaire && (u.role !== 'GESTIONNAIRE' || isCurrentUserOwner)) ||
+                    (isEntraineur && u.role === 'JOUEUR')
+                  ) && (
+                    <button
+                      onClick={() => handleDeleteMember(u)}
+                      className="text-slate-500 hover:text-red-400 transition-colors"
+                      title={t('members.deleteMemberTitle')}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
                 </div>
               ))
             )}
@@ -243,11 +310,6 @@ export default function MembresPage() {
                       <StatusBadge label={t('members.statusExpired')} variant="error" />
                     ) : (
                       <StatusBadge label={t('members.statusActive')} variant="warning" />
-                    )}
-                    {!used && !expired && (
-                      <button onClick={() => copyLink(inv.token, inv.id)} className="text-slate-500 hover:text-violet-400 transition-colors" title={t('members.copyLink')}>
-                        {copiedId === inv.id ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
-                      </button>
                     )}
                     <button onClick={() => handleDeleteInvitation(inv.id)} className="text-slate-500 hover:text-red-400 transition-colors">
                       <Trash2 size={15} />

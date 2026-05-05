@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
+import ChatFab from '@/components/chat/ChatFab';
+import ChatDrawer from '@/components/chat/ChatDrawer';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -12,6 +14,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </main>
       </div>
       <BottomNav />
+      <ChatFab />
+      <ChatDrawer />
     </div>
   );
 }

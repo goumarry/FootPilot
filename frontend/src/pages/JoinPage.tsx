@@ -1,8 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { Activity, CheckCircle } from 'lucide-react';
 import { validateJoinCode, useJoinCode } from '@/api/join-codes';
-import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -11,11 +10,12 @@ import type { Role } from '@/types';
 
 export default function JoinPage() {
   const { code: paramCode } = useParams<{ code?: string }>();
-  const navigate = useNavigate();
-  const { login: setAuth } = useAuth();
+  const [searchParams] = useSearchParams();
   const { t } = useI18n();
 
-  const [code, setCode] = useState(paramCode ?? '');
+  const initialCode = (paramCode ?? searchParams.get('code') ?? '').toUpperCase();
+
+  const [code, setCode] = useState(initialCode);
   const [codeInfo, setCodeInfo] = useState<{ role: Role; clubNom: string } | null>(null);
   const [codeError, setCodeError] = useState('');
   const [validating, setValidating] = useState(false);
@@ -24,11 +24,13 @@ export default function JoinPage() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (paramCode && paramCode.length === 6) handleValidate(paramCode);
+    if (initialCode.length === 6) handleValidate(initialCode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -52,12 +54,15 @@ export default function JoinPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!codeInfo) return;
+    if (password !== confirmPassword) {
+      setFormError(t('join.passwordMismatch'));
+      return;
+    }
     setLoading(true);
     setFormError('');
     try {
-      const { token, user } = await useJoinCode({ code, firstName, lastName, email, password });
-      setAuth(token, user as Parameters<typeof setAuth>[1]);
-      navigate(user.role === 'JOUEUR' ? '/dashboard' : '/admin', { replace: true });
+      await useJoinCode({ code, firstName, lastName, email, password, confirmPassword });
+      setSubmitted(true);
     } catch (err: unknown) {
       setFormError(
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -66,6 +71,27 @@ export default function JoinPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (submitted) {
+    return (
+      <AuthLayout>
+        <div className="flex items-center gap-2.5 mb-8">
+          <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+            <Activity size={16} className="text-violet-400" />
+          </div>
+          <span className="text-lg font-bold text-slate-700 dark:text-slate-100">FootPilot</span>
+        </div>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40 rounded-3xl p-8 backdrop-blur-sm shadow-sm text-center">
+          <CheckCircle size={48} className="mx-auto mb-4 text-green-400" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">{t('pendingVerification.title')}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{t('pendingVerification.message').replace('{email}', email)}</p>
+          <Link to="/login" className="text-violet-500 dark:text-violet-400 text-sm hover:underline">
+            {t('pendingVerification.loginLink')}
+          </Link>
+        </div>
+      </AuthLayout>
+    );
   }
 
   return (
@@ -119,6 +145,8 @@ export default function JoinPage() {
             onChange={(e) => setEmail(e.target.value)} required />
           <Input label={t('auth.password')} type="password" placeholder={t('join.passwordMin')} value={password}
             onChange={(e) => setPassword(e.target.value)} required />
+          <Input label={t('join.confirmPassword')} type="password" placeholder={t('join.confirmPasswordPlaceholder')} value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)} required />
 
           {formError && <p className="text-xs text-red-500 dark:text-red-400">{formError}</p>}
 

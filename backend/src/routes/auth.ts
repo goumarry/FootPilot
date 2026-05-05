@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { verifyToken } from '../middleware/auth';
 import { upload, processImage } from '../lib/upload';
+import { sendEmailVerificationMail } from '../lib/email';
 
 const router = Router();
 
@@ -56,6 +57,14 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
   }
 
+  if (!user.emailVerified) {
+    return res.status(401).json({ message: 'Veuillez vérifier votre adresse e-mail avant de vous connecter.' });
+  }
+
+  const club = user.clubId
+    ? await prisma.club.findUnique({ where: { id: user.clubId }, select: { idOwner: true } })
+    : null;
+
   const token = signToken(user.id, user.role, user.clubId);
   return res.json({
     token,
@@ -67,6 +76,7 @@ router.post('/login', async (req, res) => {
       role: user.role,
       clubId: user.clubId,
       profilePic: user.profilePic,
+      isOwner: club?.idOwner === user.id,
     },
   });
 });
@@ -87,7 +97,7 @@ router.post('/create-club', async (req, res) => {
 
   const hashed = await bcrypt.hash(password, 12);
 
-  const { user, club } = await prisma.$transaction(async (tx) => {
+  const { user } = await prisma.$transaction(async (tx) => {
     const club = await tx.club.create({
       data: { nom: clubNom, ville: clubVille },
     });
@@ -99,24 +109,21 @@ router.post('/create-club', async (req, res) => {
         lastName,
         role: 'GESTIONNAIRE',
         clubId: club.id,
+        emailVerified: false,
       },
     });
-    return { user, club };
+    await tx.club.update({ where: { id: club.id }, data: { idOwner: user.id } });
+    return { user };
   });
 
-  const token = signToken(user.id, user.role, user.clubId);
-  return res.status(201).json({
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      clubId: user.clubId,
-    },
-    club: { id: club.id, nom: club.nom, ville: club.ville },
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const verif = await prisma.emailVerificationToken.create({
+    data: { userId: user.id, expiresAt },
   });
+
+  sendEmailVerificationMail({ to: user.email, firstName: user.firstName, token: verif.token }).catch(() => {});
+
+  return res.status(201).json({ message: 'Compte créé. Vérifiez votre boîte mail pour activer votre compte.' });
 });
 
 // GET /api/auth/invitation/:token
@@ -160,7 +167,12 @@ router.post('/register', async (req, res) => {
   if (!email) return res.status(400).json({ message: 'Email requis.' });
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return res.status(409).json({ message: 'Un compte avec cet email existe déjà.' });
+  if (existing) {
+    if (!existing.emailVerified) {
+      return res.status(409).json({ message: 'Une inscription est déjà en cours pour cette adresse. Veuillez vérifier votre boîte mail pour confirmer votre compte.' });
+    }
+    return res.status(409).json({ message: 'Un compte avec cet email existe déjà.' });
+  }
 
   const hashed = await bcrypt.hash(password, 12);
 
@@ -214,6 +226,35 @@ router.post('/register', async (req, res) => {
   });
 });
 
+// POST /api/auth/verify-email — public, confirme l'adresse e-mail via le token
+router.post('/verify-email', async (req, res) => {
+  const { token } = req.body as { token?: string };
+  if (!token) return res.status(400).json({ message: 'Token manquant.' });
+
+  const verif = await prisma.emailVerificationToken.findUnique({
+    where: { token },
+    include: { user: { select: { emailVerified: true } } },
+  });
+  if (!verif) return res.status(404).json({ message: 'Lien de vérification invalide.' });
+
+  if (verif.user.emailVerified) {
+    await prisma.emailVerificationToken.delete({ where: { token } });
+    return res.json({ message: 'Votre compte est déjà vérifié. Vous pouvez vous connecter.' });
+  }
+
+  if (verif.expiresAt < new Date()) {
+    await prisma.emailVerificationToken.delete({ where: { token } });
+    return res.status(410).json({ message: 'Ce lien a expiré. Veuillez vous réinscrire.' });
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: verif.userId }, data: { emailVerified: true } }),
+    prisma.emailVerificationToken.delete({ where: { token } }),
+  ]);
+
+  return res.json({ message: 'Adresse e-mail vérifiée. Vous pouvez maintenant vous connecter.' });
+});
+
 // POST /api/auth/me/profile-pic — upload photo de profil (authentifié)
 router.post('/me/profile-pic', verifyToken, upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Fichier requis.' });
@@ -246,10 +287,12 @@ router.get('/me', verifyToken, async (req, res) => {
       phone: true,
       birthDate: true,
       createdAt: true,
+      club: { select: { idOwner: true } },
     },
   });
   if (!user) return res.status(404).json({ message: 'Utilisateur introuvable.' });
-  return res.json(user);
+  const { club, ...rest } = user;
+  return res.json({ ...rest, isOwner: club?.idOwner === user.id });
 });
 
 export default router;

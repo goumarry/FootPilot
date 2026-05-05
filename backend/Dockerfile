@@ -21,4 +21,4 @@ COPY --from=builder /app/node_modules/@img ./node_modules/@img
 COPY prisma ./prisma
 
 EXPOSE 3001
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/prisma/seed.js && node dist/src/index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/src/index.js"]

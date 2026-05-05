@@ -109,7 +109,10 @@
     "createAccount": "Créer mon compte",
     "changeCode": "← Changer de code",
     "registerError": "Erreur lors de la création du compte.",
-    "passwordMin": "8 caractères minimum"
+    "passwordMin": "8 caractères minimum",
+    "confirmPassword": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Répétez votre mot de passe",
+    "passwordMismatch": "Les mots de passe ne correspondent pas."
   },
   "createClub": {
     "title": "Créer mon club",
@@ -319,11 +322,17 @@
     "disable": "Désactiver",
     "reactivate": "Réactiver",
     "copyLink": "Copier le lien",
-    "copyCode": "Copier le code",
+    "copyCode": "Copier le lien d'inscription",
     "createError": "Erreur lors de la création.",
     "firstName": "Prénom",
     "lastName": "Nom",
-    "email": "Email"
+    "email": "Email",
+    "deleteMemberTitle": "Supprimer le membre",
+    "deleteMemberConfirm": "Supprimer définitivement {name} ? Son compte et son profil joueur seront effacés.",
+    "promoteTitle": "Promouvoir en gestionnaire",
+    "promoteConfirm": "Promouvoir {name} au rôle de gestionnaire ? Cette action est irréversible.",
+    "promoteConfirmBtn": "Promouvoir",
+    "owner": "Propriétaire"
   },
   "club": {
     "subtitle": "Administration",
@@ -374,6 +383,18 @@
     "retard": "En retard",
     "blesse": "Blessé",
     "butsParMatch": "Buts / match"
+  },
+  "chat": {
+    "title": "Messagerie",
+    "open": "Ouvrir la messagerie",
+    "noRooms": "Aucun salon disponible",
+    "empty": "Soyez le premier à écrire !",
+    "loadMore": "Charger les messages précédents",
+    "inputPlaceholder": "Message…",
+    "sendHint": "Entrée pour envoyer · Maj+Entrée pour aller à la ligne",
+    "staff": "Staff",
+    "direction": "Direction",
+    "online": "En ligne"
   },
   "planning": {
     "title": "Calendrier",
@@ -452,5 +473,46 @@
     "attendanceNote": "Note",
     "attendanceButs": "Buts",
     "errorAdversaire": "Le nom de l'adversaire est requis."
+  },
+  "verifyEmail": {
+    "loading": "Vérification en cours…",
+    "successTitle": "E-mail confirmé !",
+    "loginBtn": "Se connecter",
+    "errorTitle": "Lien invalide",
+    "error": "Ce lien de vérification est invalide ou a expiré.",
+    "backToLogin": "Retour à la connexion",
+    "invalidLink": "Lien de vérification manquant."
+  },
+  "pendingVerification": {
+    "title": "Vérifiez votre e-mail",
+    "message": "Un e-mail de confirmation a été envoyé à {email}. Cliquez sur le lien pour activer votre compte.",
+    "loginLink": "Déjà vérifié ? Se connecter"
+  },
+  "paywall": {
+    "statsTitle": "Module Statistiques",
+    "statsDesc": "Accédez à vos statistiques détaillées — buts, passes, assiduité — avec l'abonnement Premium.",
+    "chatTitle": "Module Messagerie",
+    "chatDesc": "Communiquez avec votre équipe et le staff grâce à la messagerie intégrée avec l'abonnement Premium.",
+    "subscribeBtn": "S'abonner",
+    "noCommitment": "Sans engagement · Résiliable à tout moment",
+    "limitsTitle": "Limite atteinte",
+    "teamsLimit": "{current} / {limit} équipes",
+    "playersLimit": "{current} / {limit} joueurs",
+    "unlockBtn": "Pack Illimité — 9,99 €",
+    "unlockDesc": "Supprimez toutes les limites de création.",
+    "scaleDesc": "Supprimez les limites d'équipes (3 max) et de joueurs (30 max) pour un paiement unique de 9,99 €.",
+    "active": "Actif",
+    "free": "Gratuit",
+    "past_due": "Paiement en retard",
+    "canceled": "Annulé",
+    "unlocked": "Illimité débloqué",
+    "founder": "Compte Fondateur — Accès complet gratuit",
+    "subscriptionLabel": "Abonnement Premium",
+    "scaleLabel": "Pack Illimité",
+    "manageBtn": "Gérer l'abonnement",
+    "subscribeTitle": "Abonnement",
+    "subscribeDesc": "Débloquez les modules Statistiques et Messagerie pour 4,99 €/mois.",
+    "contactOwner": "Cette fonctionnalité est réservée aux clubs Premium. Veuillez contacter le propriétaire du club pour débloquer cet accès.",
+    "playerStatsDesc": "Accédez aux statistiques détaillées du joueur (buts, assiduité, etc.) avec l'abonnement Premium."
   }
 }

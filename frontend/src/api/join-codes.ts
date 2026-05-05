@@ -33,9 +33,10 @@ export async function useJoinCode(payload: {
   lastName: string;
   email: string;
   password: string;
+  confirmPassword: string;
   birthDate?: string;
-}): Promise<{ token: string; user: { id: string; email: string; firstName: string; lastName: string; role: string; clubId: string } }> {
-  const { data } = await client.post('/join-codes/use', {
+}): Promise<{ message: string }> {
+  const { data } = await client.post<{ message: string }>('/join-codes/use', {
     ...payload,
     code: payload.code.toUpperCase(),
   });

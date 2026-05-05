@@ -62,32 +62,28 @@ const appelSchema = z.object({
 
 type JoueurRaw = {
   id: string;
-  firstName: string | null;
-  lastName: string | null;
   photoUrl?: string | null;
-  user?: { firstName: string; lastName: string } | null;
+  user: { firstName: string; lastName: string };
 };
 
 function normalizeJoueur<T extends JoueurRaw>(j: T) {
-  const { user: _user, ...rest } = j as T & { user?: unknown };
+  const { user, ...rest } = j as T & { user: unknown };
   return {
-    ...rest,
-    firstName: (j.user?.firstName ?? j.firstName) ?? '',
-    lastName: (j.user?.lastName ?? j.lastName) ?? '',
+    ...(rest as Omit<T, 'user'>),
+    firstName: j.user.firstName,
+    lastName: j.user.lastName,
   };
 }
 
 const joueurSelect = {
   id: true,
-  firstName: true,
-  lastName: true,
   photoUrl: true,
   user: { select: { firstName: true, lastName: true } },
 } as const;
 
 const butInclude = {
-  buteur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
-  passeur: { select: { id: true, firstName: true, lastName: true, user: { select: { firstName: true, lastName: true } } } },
+  buteur: { select: { id: true, user: { select: { firstName: true, lastName: true } } } },
+  passeur: { select: { id: true, user: { select: { firstName: true, lastName: true } } } },
 } as const;
 
 function isEventPast(ev: { dateHeure: Date; duree: number }): boolean {
@@ -306,38 +302,87 @@ router.delete('/:id', requireRole(Role.GESTIONNAIRE, Role.ENTRAINEUR), async (re
 router.get('/:id/appel', async (req, res) => {
   const ev = await prisma.evenement.findUnique({
     where: { id: req.params.id },
-    select: { id: true, equipeId: true, snapshotPris: true, dateHeure: true },
+    select: { id: true, equipeId: true, snapshotPris: true, dateHeure: true, duree: true },
   });
   if (!ev) return res.status(404).json({ message: 'Événement introuvable.' });
 
-  // Figer la liste dès que l'événement a commencé (snapshot unique)
-  if (!ev.snapshotPris && Date.now() >= new Date(ev.dateHeure).getTime()) {
-    const teamMembers = await prisma.joueurEquipe.findMany({
-      where: { equipeId: ev.equipeId, dateFin: null },
-      select: { joueurId: true },
+  const eventEndDate = new Date(new Date(ev.dateHeure).getTime() + ev.duree * 60000);
+  const now = new Date();
+
+  // Cas C — snapshot déjà figé : retourner les présences enregistrées
+  if (ev.snapshotPris) {
+    const presences = await prisma.presence.findMany({
+      where: { evenementId: ev.id },
+      include: { joueur: { select: joueurSelect } },
     });
-    if (teamMembers.length > 0) {
-      await prisma.$transaction([
-        ...teamMembers.map((je) =>
-          prisma.presence.upsert({
-            where: { evenementId_joueurId: { evenementId: ev.id, joueurId: je.joueurId } },
-            update: {},
-            create: { evenementId: ev.id, joueurId: je.joueurId, statut: 'PRESENT', note: 3 },
-          })
-        ),
-        prisma.evenement.update({ where: { id: ev.id }, data: { snapshotPris: true } }),
-      ]);
-    }
+    return res.json(presences.map((p) => ({ ...p, joueur: normalizeJoueur(p.joueur) })));
   }
 
-  const presences = await prisma.presence.findMany({
-    where: { evenementId: req.params.id },
+  // Cas B — événement terminé, première ouverture : figer le snapshot
+  if (now >= eventEndDate) {
+    const teamMembers = await prisma.joueurEquipe.findMany({
+      where: {
+        equipeId: ev.equipeId,
+        dateDebut: { lte: eventEndDate },
+        OR: [{ dateFin: null }, { dateFin: { gt: eventEndDate } }],
+      },
+      select: { joueurId: true },
+    });
+
+    const finalRosterIds = teamMembers.map((je) => je.joueurId);
+
+    await prisma.$transaction([
+      // Purge des présences fantômes (joueurs exclus de l'équipe avant la fin de l'événement)
+      prisma.presence.deleteMany({
+        where: { evenementId: ev.id, joueurId: { notIn: finalRosterIds } },
+      }),
+      ...teamMembers.map((je) =>
+        prisma.presence.upsert({
+          where: { evenementId_joueurId: { evenementId: ev.id, joueurId: je.joueurId } },
+          update: {},
+          create: { evenementId: ev.id, joueurId: je.joueurId, statut: 'PRESENT', note: 3 },
+        })
+      ),
+      prisma.evenement.update({ where: { id: ev.id }, data: { snapshotPris: true } }),
+    ]);
+
+    const presences = await prisma.presence.findMany({
+      where: { evenementId: ev.id },
+      include: { joueur: { select: joueurSelect } },
+    });
+    return res.json(presences.map((p) => ({ ...p, joueur: normalizeJoueur(p.joueur) })));
+  }
+
+  // Cas A — événement en cours ou à venir : liste dynamique
+  const liveMembers = await prisma.joueurEquipe.findMany({
+    where: {
+      equipeId: ev.equipeId,
+      dateDebut: { lte: now },
+      OR: [{ dateFin: null }, { dateFin: { gt: now } }],
+    },
     include: { joueur: { select: joueurSelect } },
   });
-  return res.json(presences.map((p) => ({
-    ...p,
-    joueur: normalizeJoueur(p.joueur),
-  })));
+
+  const liveMemberIds = liveMembers.map((je) => je.joueurId);
+
+  // LEFT JOIN sur Presence pour récupérer les stats déjà saisies (live tracking)
+  const existingPresences = await prisma.presence.findMany({
+    where: { evenementId: ev.id, joueurId: { in: liveMemberIds } },
+  });
+  const presenceMap = new Map(existingPresences.map((p) => [p.joueurId, p]));
+
+  return res.json(liveMembers.map((je) => {
+    const existing = presenceMap.get(je.joueurId);
+    return {
+      evenementId: ev.id,
+      joueurId: je.joueurId,
+      statut: existing?.statut ?? ('PRESENT' as const),
+      note: existing?.note ?? 3,
+      buts: existing?.buts ?? null,
+      commentaire: existing?.commentaire ?? null,
+      joueur: normalizeJoueur(je.joueur),
+    };
+  }));
 });
 
 // ── POST /api/evenements/:id/appel ────────────────────────────────────────────
