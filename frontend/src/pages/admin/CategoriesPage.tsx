@@ -95,7 +95,7 @@ export default function CategoriesPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-2xl">
+      <div className="p-6 max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('categories.subtitle')}</p>

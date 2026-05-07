@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl">
+      <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-8">
           <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('dashboard.subtitle')}</p>
           <h1 className="text-2xl font-extrabold text-slate-50">

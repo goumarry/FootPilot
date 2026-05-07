@@ -1,0 +1,8 @@
+# Variables d'environnement — ne jamais commiter
+.env
+
+# Dépendances
+node_modules/
+
+# Builds
+dist/

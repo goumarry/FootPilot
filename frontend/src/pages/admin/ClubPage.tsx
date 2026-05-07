@@ -104,7 +104,7 @@ export default function ClubPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-lg">
+      <div className="p-6 max-w-lg mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center flex-shrink-0">
             <Settings size={18} className="text-violet-400" />

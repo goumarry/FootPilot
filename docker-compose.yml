@@ -1,19 +1,22 @@
 version: '3.9'
 
+# Toutes les variables sensibles sont lues depuis le fichier .env à la racine.
+# Copier .env.example → .env et renseigner les valeurs avant de lancer.
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: footpilot
-      POSTGRES_USER: footpilot
-      POSTGRES_PASSWORD: footpilot_secret
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U footpilot"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,21 +29,21 @@ services:
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgresql://footpilot:footpilot_secret@db:5432/footpilot
-      JWT_SECRET: fp_jwt_secret_change_in_production_use_256bit_random
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
       PORT: 3001
       NODE_ENV: production
-      SMTP_HOST: smtp.gmail.com
-      SMTP_PORT: "587"
-      SMTP_USER: footpilot.notifications@gmail.com
-      SMTP_PASS: "qfbc otbq acyh jqjz"
-      SMTP_FROM: "FootPilot <footpilot.notifications@gmail.com>"
-      APP_URL: http://localhost:3000
-      CORS_ORIGIN: http://localhost:3000
-      STRIPE_SECRET_KEY: sk_test_51TTn9K2OZ7hHGPfzODX6oDwTCgrzY5NxFzzeuwRu9qrkKCZsWDybLpQRsLJtv7SMWqh7RNasPAHnnicrCMI7Tq0a00CRsNNYyc
-      STRIPE_WEBHOOK_SECRET: whsec_ff17148cc0e061331e363a02bbecc4cccfbf354268446b113a907ab7b62af253
-      STRIPE_SUBSCRIPTION_PRICE_ID: price_1TTnEj2OZ7hHGPfzV4KfGQ3U
-      STRIPE_PAYMENT_PRICE_ID: price_1TTnF42OZ7hHGPfzVur95MSA
+      APP_URL: ${APP_URL}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_SUBSCRIPTION_PRICE_ID: ${STRIPE_SUBSCRIPTION_PRICE_ID}
+      STRIPE_PAYMENT_PRICE_ID: ${STRIPE_PAYMENT_PRICE_ID}
     depends_on:
       db:
         condition: service_healthy
@@ -50,7 +53,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:3001
+        VITE_API_URL: ${VITE_API_URL}
     restart: unless-stopped
     ports:
       - "3000:80"

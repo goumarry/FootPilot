@@ -461,7 +461,7 @@ export default function EventListPage({ typeFilter, pageTitle, pageSubtitle }: E
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 max-w-4xl">
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{pageSubtitle}</p>

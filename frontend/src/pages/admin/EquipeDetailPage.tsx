@@ -185,7 +185,7 @@ export default function EquipeDetailPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-3xl">
+      <div className="p-6 max-w-3xl mx-auto">
         <button
           onClick={() => navigate('/admin/equipes')}
           className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors mb-5"

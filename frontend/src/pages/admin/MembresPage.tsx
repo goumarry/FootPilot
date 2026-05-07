@@ -183,7 +183,7 @@ export default function MembresPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl">
+      <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('members.subtitle')}</p>

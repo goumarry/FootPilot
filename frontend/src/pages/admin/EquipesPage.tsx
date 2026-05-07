@@ -237,7 +237,7 @@ export default function EquipesPage() {
 
   return (
     <AppLayout>
-      <div className="p-3 sm:p-6 max-w-3xl">
+      <div className="p-3 sm:p-6 max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div>

@@ -35,7 +35,7 @@ export default function ProfilePage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-sm">
+      <div className="p-6 max-w-sm mx-auto">
         <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">
           {t('profile.subtitle')}
         </p>

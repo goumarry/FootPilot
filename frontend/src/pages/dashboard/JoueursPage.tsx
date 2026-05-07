@@ -56,7 +56,7 @@ export default function JoueursPageDashboard() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-3xl">
+      <div className="p-6 max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('roles.ENTRAINEUR')}</p>

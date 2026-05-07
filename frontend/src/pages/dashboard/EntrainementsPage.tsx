@@ -27,7 +27,7 @@ export default function EntrainementsPage() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 max-w-3xl">
+      <div className="p-4 md:p-6 max-w-3xl mx-auto">
         <div className="mb-5">
           <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-0.5">{t('planning.subtitle')}</p>
           <h1 className="text-xl md:text-2xl font-extrabold text-slate-50">{t('planning.entrainementsTitle')}</h1>

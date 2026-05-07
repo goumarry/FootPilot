@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-5xl">
+      <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-8">
           <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('adminDash.subtitle')}</p>
           <h1 className="text-2xl font-extrabold text-slate-50 tracking-tight">

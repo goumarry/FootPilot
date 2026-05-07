@@ -17,11 +17,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
-    background-color: #f8fafc;
+    background-color: #f1f5f9;
     color: #0f172a;
   }
   html.dark body {
-    background-color: #0f172a;
+    background-color: #020617;
     color: #f1f5f9;
   }
   input, button, select, textarea {
@@ -68,25 +68,55 @@
   }
 }
 
-/* ── Light-mode overrides scoped to authenticated app pages ─── */
-/* Only affects elements that still use raw (non-dark:) slate classes */
+/* ── Two-tone layout: panel central sur desktop ── */
+@media (min-width: 1024px) {
+  html:not(.dark) .app-content > div {
+    background-color: #ffffff;
+    min-height: 100vh;
+    box-shadow: 0 0 0 1px rgba(148,163,184,0.15), 0 2px 8px rgba(0,0,0,0.04);
+  }
+  html.dark .app-content > div {
+    background-color: #0f172a;
+    min-height: 100vh;
+    box-shadow: 0 0 0 1px rgba(148,163,184,0.06);
+  }
+}
 
+/* ── Light-mode overrides scoped to authenticated app pages ─── */
+
+/* Textes : dark-first → valeurs lisibles sur fond clair */
 html:not(.dark) .app-content .text-slate-50  { color: #0f172a; }
 html:not(.dark) .app-content .text-slate-100 { color: #1e293b; }
 html:not(.dark) .app-content .text-slate-200 { color: #334155; }
 html:not(.dark) .app-content .text-slate-300 { color: #475569; }
+html:not(.dark) .app-content .text-slate-400 { color: #64748b; }
 
-html:not(.dark) .app-content .bg-slate-950    { background-color: #f8fafc; }
-html:not(.dark) .app-content .bg-slate-900    { background-color: #f1f5f9; }
-html:not(.dark) .app-content .bg-slate-800\/50 { background-color: rgba(255,255,255,0.9); }
-html:not(.dark) .app-content .bg-slate-800\/60 { background-color: rgba(255,255,255,1); }
-html:not(.dark) .app-content .bg-slate-700\/50 { background-color: rgba(241,245,249,0.8); }
-html:not(.dark) .app-content .bg-slate-700\/60 { background-color: rgba(241,245,249,0.9); }
+/* Fonds page */
+html:not(.dark) .app-content .bg-slate-950    { background-color: #f1f5f9; }
+html:not(.dark) .app-content .bg-slate-900    { background-color: #f8fafc; }
 
-html:not(.dark) .app-content .border-slate-700\/40 { border-color: rgba(148,163,184,0.3); }
-html:not(.dark) .app-content .border-slate-700\/50 { border-color: rgba(148,163,184,0.35); }
-html:not(.dark) .app-content .border-slate-600\/40 { border-color: rgba(148,163,184,0.25); }
-html:not(.dark) .app-content .border-slate-600\/50 { border-color: rgba(148,163,184,0.3); }
+/* Cartes / conteneurs — hiérarchie gris sur fond blanc */
+html:not(.dark) .app-content .bg-slate-800\/80 { background-color: #e2e8f0; }
+html:not(.dark) .app-content .bg-slate-800\/70 { background-color: #e2e8f0; }
+html:not(.dark) .app-content .bg-slate-800\/60 { background-color: #f1f5f9; }
+html:not(.dark) .app-content .bg-slate-800\/50 { background-color: #f1f5f9; }
+html:not(.dark) .app-content .bg-slate-800\/40 { background-color: #f8fafc; }
+html:not(.dark) .app-content .bg-slate-800\/30 { background-color: #f8fafc; }
+html:not(.dark) .app-content .bg-slate-800\/25 { background-color: rgba(241,245,249,0.7); }
+html:not(.dark) .app-content .bg-slate-800\/20 { background-color: rgba(241,245,249,0.5); }
+html:not(.dark) .app-content .bg-slate-700\/60 { background-color: #e2e8f0; }
+html:not(.dark) .app-content .bg-slate-700\/50 { background-color: #e2e8f0; }
+html:not(.dark) .app-content .bg-slate-700\/20 { background-color: rgba(226,232,240,0.5); }
+
+/* Bordures — clairement visibles en mode clair */
+html:not(.dark) .app-content .border-slate-700\/50 { border-color: rgba(100,116,139,0.5); }
+html:not(.dark) .app-content .border-slate-700\/40 { border-color: rgba(100,116,139,0.4); }
+html:not(.dark) .app-content .border-slate-700\/30 { border-color: rgba(100,116,139,0.3); }
+html:not(.dark) .app-content .border-slate-700\/20 { border-color: rgba(100,116,139,0.2); }
+html:not(.dark) .app-content .border-slate-600\/60 { border-color: rgba(100,116,139,0.5); }
+html:not(.dark) .app-content .border-slate-600\/50 { border-color: rgba(100,116,139,0.45); }
+html:not(.dark) .app-content .border-slate-600\/40 { border-color: rgba(100,116,139,0.35); }
+html:not(.dark) .app-content .border-slate-600\/30 { border-color: rgba(100,116,139,0.25); }
 
 /* Google Places autocomplete dropdown */
 .pac-container {

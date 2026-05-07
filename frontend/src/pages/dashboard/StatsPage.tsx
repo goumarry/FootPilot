@@ -23,7 +23,7 @@ export default function StatsPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-2xl">
+      <div className="p-6 max-w-2xl mx-auto">
         <div className="mb-6">
           <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('stats.subtitle')}</p>
           <h1 className="text-2xl font-extrabold text-slate-50">{t('stats.title')}</h1>

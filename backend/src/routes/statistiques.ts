@@ -5,7 +5,6 @@ import { requireSubscription } from '../middleware/billing';
 
 const router = Router();
 router.use(verifyToken);
-router.use(requireSubscription);
 
 const joueurStatsInclude = {
   user: { select: { firstName: true, lastName: true } },
@@ -73,7 +72,7 @@ function computeStats(joueur: {
 }
 
 // GET /api/statistiques/joueurs/moi — stats du joueur connecté
-router.get('/joueurs/moi', async (req, res) => {
+router.get('/joueurs/moi', requireSubscription, async (req, res) => {
   const joueur = await prisma.joueur.findFirst({
     where: { userId: req.user!.userId },
     include: joueurStatsInclude,
@@ -83,7 +82,7 @@ router.get('/joueurs/moi', async (req, res) => {
 });
 
 // GET /api/statistiques/joueurs/:id
-router.get('/joueurs/:id', async (req, res) => {
+router.get('/joueurs/:id', requireSubscription, async (req, res) => {
   const joueur = await prisma.joueur.findUnique({
     where: { id: req.params.id },
     include: joueurStatsInclude,
@@ -93,7 +92,7 @@ router.get('/joueurs/:id', async (req, res) => {
 });
 
 // GET /api/statistiques/equipes/:id
-router.get('/equipes/:id', async (req, res) => {
+router.get('/equipes/:id', requireSubscription, async (req, res) => {
   const evenements = await prisma.evenement.findMany({
     where: { equipeId: req.params.id, type: 'MATCH' },
   });
@@ -122,7 +121,7 @@ router.get('/equipes/:id', async (req, res) => {
   });
 });
 
-// GET /api/statistiques/clubs/:id
+// GET /api/statistiques/clubs/:id — libre (plan gratuit)
 router.get('/clubs/:id', async (req, res) => {
   const [club, entraineurs, matchs, entrainements] = await Promise.all([
     prisma.club.findUnique({

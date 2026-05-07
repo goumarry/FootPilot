@@ -17,7 +17,7 @@ export default function EquipesPageDashboard() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-3xl">
+      <div className="p-6 max-w-3xl mx-auto">
         <div className="mb-6">
           <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">{t('roles.ENTRAINEUR')}</p>
           <h1 className="text-2xl font-extrabold text-slate-50">{t('teams.myTeams')}</h1>

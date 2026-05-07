@@ -1,9 +1,3 @@
-index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/subscription 502 (Bad Gateway)
+Meme dans le lde clair il faut garder une DA un peu violette notamment sur les boutons. Acxtuellement dans dashboard tout est blanc meme els boutons clicquables c'est pas ouf.
 
-index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/subscription 502 (Bad Gateway)
-
-index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/payment 502 (Bad Gateway)
-
-index-jBoKUTSI.js:69  POST http://localhost:3000/api/billing/checkout/payment 502 (Bad Gateway)
-
-Je pense que tu n'as pas rajouter les variables du backend/.env dans le docker-compose donc stripe ne peut pas marcher
+La fenetre
