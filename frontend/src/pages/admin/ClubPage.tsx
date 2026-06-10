@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, Save, Camera, Shield, CreditCard, CheckCircle, AlertCircle, XCircle, Infinity, Info } from 'lucide-react';
+import { Settings, Save, Camera, Shield, CreditCard, CheckCircle, AlertCircle, XCircle, Infinity as InfinityIcon, Info } from 'lucide-react';
 import { getClub, updateClub } from '@/api/clubs';
 import { uploadClubLogo } from '@/api/images';
 import { createSubscriptionCheckout, createPaymentCheckout, createPortalSession } from '@/api/billing';
@@ -211,7 +211,7 @@ export default function ClubPage() {
 
                 {billing.isFounder && (
                   <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
-                    <Infinity size={18} className="text-amber-400 flex-shrink-0" />
+                    <InfinityIcon size={18} className="text-amber-400 flex-shrink-0" />
                     <p className="text-sm text-amber-300 font-semibold">{t('paywall.founder')}</p>
                   </div>
                 )}

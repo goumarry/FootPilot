@@ -1,0 +1,157 @@
+name: CI/CD FootPilot
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1 : Lint + TypeScript check
+  # ─────────────────────────────────────────────
+  lint-and-typecheck:
+    name: Lint & TypeScript
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Lint backend
+        working-directory: backend
+        run: npm run lint
+
+      - name: TypeScript check frontend
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: TypeScript check backend
+        working-directory: backend
+        run: npm run typecheck
+
+  # ─────────────────────────────────────────────
+  # Job 2 : Tests unitaires
+  # ─────────────────────────────────────────────
+  test:
+    name: Tests unitaires
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Tests frontend (Vitest)
+        working-directory: frontend
+        run: npm test
+
+      - name: Tests backend (Jest)
+        working-directory: backend
+        run: npm test
+        env:
+          JWT_SECRET: test_secret_ci
+
+  # ─────────────────────────────────────────────
+  # Job 3 : Sécurité — npm audit + CodeQL
+  # Tourne en parallèle du job test (tous deux
+  # attendent que lint-and-typecheck soit vert)
+  # ─────────────────────────────────────────────
+  security:
+    name: Analyse sécurité
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      # npm audit — bloque sur high et critical uniquement
+      - name: Audit dépendances frontend
+        working-directory: frontend
+        run: npm run audit
+
+      - name: Audit dépendances backend
+        working-directory: backend
+        run: npm run audit
+
+      # CodeQL — analyse statique SAST (injections, XSS, etc.)
+      - name: Initialiser CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - name: Analyse CodeQL
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  # ─────────────────────────────────────────────
+  # Job 4 : Déploiement (à venir — étape 4)
+  # ─────────────────────────────────────────────
+  # deploy:
+  #   name: Deploy
+  #   needs: [test, security]
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   ...

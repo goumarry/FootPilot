@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Activity, CheckCircle } from 'lucide-react';
-import { validateJoinCode, useJoinCode } from '@/api/join-codes';
+import { validateJoinCode, redeemJoinCode } from '@/api/join-codes';
 import { useI18n } from '@/contexts/I18nContext';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -61,7 +61,7 @@ export default function JoinPage() {
     setLoading(true);
     setFormError('');
     try {
-      await useJoinCode({ code, firstName, lastName, email, password, confirmPassword });
+      await redeemJoinCode({ code, firstName, lastName, email, password, confirmPassword });
       setSubmitted(true);
     } catch (err: unknown) {
       setFormError(

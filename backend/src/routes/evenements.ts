@@ -67,7 +67,7 @@ type JoueurRaw = {
 };
 
 function normalizeJoueur<T extends JoueurRaw>(j: T) {
-  const { user, ...rest } = j as T & { user: unknown };
+  const { user: _user, ...rest } = j as T & { user: unknown };
   return {
     ...(rest as Omit<T, 'user'>),
     firstName: j.user.firstName,

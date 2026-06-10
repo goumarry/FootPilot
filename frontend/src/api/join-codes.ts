@@ -27,7 +27,7 @@ export async function validateJoinCode(code: string): Promise<{
   return data;
 }
 
-export async function useJoinCode(payload: {
+export async function redeemJoinCode(payload: {
   code: string;
   firstName: string;
   lastName: string;
