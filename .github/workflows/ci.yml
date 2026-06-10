@@ -147,11 +147,51 @@ jobs:
           category: /language:javascript-typescript
 
   # ─────────────────────────────────────────────
-  # Job 4 : Déploiement (à venir — étape 4)
+  # Job 4 : Déploiement
+  # Frontend → Vercel
+  # Backend  → Railway (auto via "Wait for CI")
+  # Ne s'exécute que sur push main, après que
+  # test ET security soient verts
   # ─────────────────────────────────────────────
-  # deploy:
-  #   name: Deploy
-  #   needs: [test, security]
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   ...
+  deploy:
+    name: Déploiement
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      # Récupère la config et les variables d'env depuis Vercel
+      - name: Pull Vercel environment
+        working-directory: frontend
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Build du frontend — VITE_API_URL pointe vers le backend Railway
+      - name: Build frontend
+        working-directory: frontend
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      # Upload du build vers Vercel
+      - name: Deploy vers Vercel
+        working-directory: frontend
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
