@@ -205,9 +205,9 @@ jobs:
           }
           EOF
 
-      # Déploiement du build pré-compilé vers Vercel
+      # Déploiement depuis la racine du repo — Vercel résout frontend/.vercel/output
+      # grâce au Root Directory = "frontend" configuré dans le projet Vercel
       - name: Deploy vers Vercel
-        working-directory: frontend
         run: vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
