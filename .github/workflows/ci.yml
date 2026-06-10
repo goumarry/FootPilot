@@ -176,39 +176,27 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      # Installation avec npm ci — garantit TypeScript 5.x du lock file
-      - name: Install frontend dependencies
+      # Récupère la config et les variables d'env depuis Vercel
+      - name: Pull Vercel environment
         working-directory: frontend
-        run: npm ci
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      # Build avec notre TypeScript 5.x — VITE_API_URL baked dans le bundle
+      # Build du frontend — VITE_API_URL pointe vers le backend Railway
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
-      # Mise en forme du build au format attendu par vercel deploy --prebuilt
-      # config.json : routes SPA — tout chemin non trouvé → index.html (React Router)
-      - name: Préparer le format Vercel output
-        working-directory: frontend
-        run: |
-          mkdir -p .vercel/output/static
-          cp -r dist/* .vercel/output/static/
-          cat > .vercel/output/config.json << 'EOF'
-          {
-            "version": 3,
-            "routes": [
-              { "handle": "filesystem" },
-              { "src": "/(.*)", "dest": "/index.html" }
-            ]
-          }
-          EOF
-
-      # Déploiement depuis la racine du repo — Vercel résout frontend/.vercel/output
-      # grâce au Root Directory = "frontend" configuré dans le projet Vercel
+      # Upload du build vers Vercel
       - name: Deploy vers Vercel
-        run: vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
