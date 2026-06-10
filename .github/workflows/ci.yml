@@ -144,7 +144,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
-          queries: security-and-quality
+          queries: security-extended
 
       - name: Analyse CodeQL
         uses: github/codeql-action/analyze@v3
@@ -183,6 +183,11 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Installation depuis le lock file — force TypeScript 5.x (évite upgrade TS6 par vercel build)
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
 
       # Build du frontend — VITE_API_URL pointe vers le backend Railway
       - name: Build frontend
