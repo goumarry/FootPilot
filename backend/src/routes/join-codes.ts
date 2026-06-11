@@ -196,7 +196,9 @@ router.post('/use', async (req, res) => {
     return { user, verifToken: verif.token };
   });
 
-  sendEmailVerificationMail({ to: user.email, firstName: user.firstName, token: verifToken }).catch(() => {});
+  sendEmailVerificationMail({ to: user.email, firstName: user.firstName, token: verifToken }).catch((err) => {
+    console.error('[EMAIL] Échec envoi vérification (join-code):', err);
+  });
 
   const message = existing
     ? 'Inscription mise à jour. Un nouveau lien de confirmation a été envoyé à votre adresse e-mail.'

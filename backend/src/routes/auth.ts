@@ -121,7 +121,9 @@ router.post('/create-club', async (req, res) => {
     data: { userId: user.id, expiresAt },
   });
 
-  sendEmailVerificationMail({ to: user.email, firstName: user.firstName, token: verif.token }).catch(() => {});
+  sendEmailVerificationMail({ to: user.email, firstName: user.firstName, token: verif.token }).catch((err) => {
+    console.error('[EMAIL] Échec envoi vérification:', err);
+  });
 
   return res.status(201).json({ message: 'Compte créé. Vérifiez votre boîte mail pour activer votre compte.' });
 });
