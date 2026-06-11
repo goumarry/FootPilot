@@ -180,9 +180,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      # Récupère la config et les variables d'env depuis Vercel
+      # vercel pull/build/deploy doivent tourner depuis la RACINE du repo
+      # pour que Vercel applique correctement le rootDirectory=frontend
+      # configuré sur le dashboard (sinon il cherche dans frontend/frontend/)
       - name: Pull Vercel environment
-        working-directory: frontend
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -190,9 +191,8 @@ jobs:
 
       # Build du frontend — VITE_API_URL pointe vers le backend Railway
       - name: Build frontend
-        working-directory: frontend
         run: |
-          export PATH="$PWD/node_modules/.bin:$PATH"
+          export PATH="$PWD/frontend/node_modules/.bin:$PATH"
           vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -201,7 +201,6 @@ jobs:
 
       # Upload du build vers Vercel
       - name: Deploy vers Vercel
-        working-directory: frontend
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
