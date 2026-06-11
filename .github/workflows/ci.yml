@@ -176,6 +176,10 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
       # Récupère la config et les variables d'env depuis Vercel
       - name: Pull Vercel environment
         working-directory: frontend
