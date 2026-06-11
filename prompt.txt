@@ -1,3 +1,42 @@
-Meme dans le lde clair il faut garder une DA un peu violette notamment sur les boutons. Acxtuellement dans dashboard tout est blanc meme els boutons clicquables c'est pas ouf.
+Voici un exemple d'un rapport de projet annuel dans /Rapport_UrbanVibe_Complet.pdf . Rappel toi nous sommes en Master 1 ce rapport était Bachelor 3. Nous sommes assez expérimentés. Nous sommes en Ingénierie du Web, l'idée est que tu reprennes le plan, en changeant toutes les infos pour l'adapter à notre FootPilot. Il faut que tu sois très technique, voici les sujets à inclure:
+Scrum
+CI/CD, Tests, Docker compose, Kanban, Maquette, SGBD PostgreSQL, SEO
+Voici les membres et leurs roles
+Alix P => Developer 
 
-La fenetre
+Yoann G=> Scrum Master 
+
+Anis G => Product Owner 
+
+Irvine F => Lead Developer
+
+Il faut que tu mentionnes entre crochets quand il faut qu'on inclue des photos par exemple [ajoutez ici une photo du Kanban]
+[ajoutez ici le modèle MCD], [ajoutez ici une photo du code de...]
+
+Tu connais le code par coeur, tu connais les stacks par coeur, appuie toi dessus.
+Dis aussi qu'on à suivi ces règles de dev
+Règles de développement 
+
+Conventional Commits : https://www.conventionalcommits.org/en/v1.0.0/ 
+
+Exemple : 
+
+feat(player) : create new entity Player 
+
+fix(trainer) : update entity Trainer, add name attribute 
+
+chore: improve planning UI 
+
+ci: add new stage 
+
+docs: create dev doc 
+
+test: add player tests 
+
+Branches : feature/fp-001/backend/ 
+
+Dis aussi que pour l'année prochaine on :
+Migrera vers un Cloud provider => sécurité, éthique 
+Migrera vers K8S
+
+Sois très précis, détaille, fais une légende aussi comme sur l'exemple, fais un plan précis, sommaire, page de garde... tout en gardant le contexte école étudiant avec un language humain simple. Il faut une vingtaine de pages hors annexes. Il faut aussi que tu fasses des annexes pour les grosses mentions.
