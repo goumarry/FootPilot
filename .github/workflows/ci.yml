@@ -191,7 +191,9 @@ jobs:
       # Build du frontend — VITE_API_URL pointe vers le backend Railway
       - name: Build frontend
         working-directory: frontend
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
