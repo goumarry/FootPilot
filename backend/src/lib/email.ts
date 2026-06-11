@@ -1,16 +1,8 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST ?? 'smtp.ethereal.email',
-  port: Number(process.env.SMTP_PORT ?? 587),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = `FootPilot <${process.env.SMTP_FROM ?? 'noreply@footpilot.fr'}>`;
+const FROM = process.env.SMTP_FROM ?? 'FootPilot <onboarding@resend.dev>';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000';
 
 export async function sendInvitationEmail(opts: {
@@ -28,7 +20,7 @@ export async function sendInvitationEmail(opts: {
     JOUEUR: 'Joueur',
   };
 
-  await transporter.sendMail({
+  await resend.emails.send({
     from: FROM,
     to: opts.to,
     subject: `Invitation FootPilot — ${opts.clubNom}`,
@@ -59,7 +51,7 @@ export async function sendEmailVerificationMail(opts: {
 }) {
   const link = `${APP_URL}/verify-email/${opts.token}`;
 
-  await transporter.sendMail({
+  await resend.emails.send({
     from: FROM,
     to: opts.to,
     subject: 'FootPilot — Confirmez votre adresse e-mail',
@@ -91,7 +83,7 @@ export async function sendActualiteEmail(opts: {
 }) {
   if (opts.to.length === 0) return;
 
-  await transporter.sendMail({
+  await resend.emails.send({
     from: FROM,
     to: opts.to,
     subject: `[${opts.clubNom}] ${opts.titre}`,
