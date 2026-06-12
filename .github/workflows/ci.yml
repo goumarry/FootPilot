@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '35 14 * * 6'
 
 permissions:
   contents: read
@@ -141,16 +143,28 @@ jobs:
         run: npm run audit
 
       # CodeQL — analyse statique SAST (injections, XSS, etc.)
-      - name: Initialiser CodeQL
+      # Analyse javascript-typescript + workflows GitHub Actions
+      - name: Initialiser CodeQL (javascript-typescript)
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
           queries: security-extended
 
-      - name: Analyse CodeQL
+      - name: Analyse CodeQL (javascript-typescript)
         uses: github/codeql-action/analyze@v3
         with:
           category: /language:javascript-typescript
+
+      - name: Initialiser CodeQL (actions)
+        uses: github/codeql-action/init@v3
+        with:
+          languages: actions
+          build-mode: none
+
+      - name: Analyse CodeQL (actions)
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:actions
 
   # ─────────────────────────────────────────────
   # Job 4 : Déploiement
