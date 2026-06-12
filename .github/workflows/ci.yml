@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
+    # Analyse de sécurité hebdomadaire tous les samedis à 14h35 UTC
     - cron: '35 14 * * 6'
 
 permissions:
@@ -22,9 +23,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Télécharge le code source du dépôt sur la machine virtuelle
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Installe Node.js 20 et active le cache npm pour accélérer les jobs suivants
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -34,26 +37,32 @@ jobs:
             frontend/package-lock.json
             backend/package-lock.json
 
+      # Installe les dépendances frontend avec les versions exactes du package-lock.json
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
+      # Installe les dépendances backend avec les versions exactes du package-lock.json
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
 
+      # Vérifie que le code frontend respecte les règles ESLint (style, bonnes pratiques)
       - name: Lint frontend
         working-directory: frontend
         run: npm run lint
 
+      # Vérifie que le code backend respecte les règles ESLint
       - name: Lint backend
         working-directory: backend
         run: npm run lint
 
+      # Vérifie le typage TypeScript du frontend sans produire de fichiers compilés
       - name: TypeScript check frontend
         working-directory: frontend
         run: npm run typecheck
 
+      # Vérifie le typage TypeScript du backend sans produire de fichiers compilés
       - name: TypeScript check backend
         working-directory: backend
         run: npm run typecheck
@@ -63,13 +72,16 @@ jobs:
   # ─────────────────────────────────────────────
   test:
     name: Tests unitaires
+    # Attend que le Job 1 soit vert avant de démarrer
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
 
     steps:
+      # Nouveau clone du code sur une machine virtuelle fraîche
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Installe Node.js 20 avec cache npm
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -79,18 +91,23 @@ jobs:
             frontend/package-lock.json
             backend/package-lock.json
 
+      # Réinstalle les dépendances frontend (node_modules n'est pas partagé entre jobs)
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
+      # Réinstalle les dépendances backend
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
 
+      # Exécute les tests frontend avec Vitest (compilation TypeScript en mémoire, pas de build)
       - name: Tests frontend (Vitest)
         working-directory: frontend
         run: npm test
 
+      # Exécute les tests backend avec Jest — JWT_SECRET et BREVO_API_KEY sont des valeurs
+      # fictives suffisantes pour les tests qui mockent les appels externes
       - name: Tests backend (Jest)
         working-directory: backend
         run: npm test
@@ -105,6 +122,7 @@ jobs:
   # ─────────────────────────────────────────────
   security:
     name: Analyse sécurité
+    # Tourne en parallèle du Job 2 — tous deux attendent seulement le Job 1
     needs: lint-and-typecheck
     runs-on: ubuntu-latest
     permissions:
@@ -113,9 +131,11 @@ jobs:
       contents: read
 
     steps:
+      # Nouveau clone du code sur une machine virtuelle fraîche
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Installe Node.js 20 avec cache npm
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -125,42 +145,53 @@ jobs:
             frontend/package-lock.json
             backend/package-lock.json
 
+      # Installe les dépendances frontend — nécessaire pour que npm audit puisse
+      # construire l'arbre complet des dépendances à analyser
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
+      # Installe les dépendances backend pour la même raison
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
 
-      # npm audit — bloque sur high et critical uniquement
+      # Vérifie les dépendances frontend contre la base de données CVE —
+      # bloque le pipeline si une vulnérabilité high ou critical est détectée
       - name: Audit dépendances frontend
         working-directory: frontend
         run: npm run audit
 
+      # Même vérification pour les dépendances backend
       - name: Audit dépendances backend
         working-directory: backend
         run: npm run audit
 
-      # CodeQL — analyse statique SAST (injections, XSS, etc.)
-      # Analyse javascript-typescript + workflows GitHub Actions
+      # Prépare l'environnement CodeQL pour analyser le code TypeScript/JavaScript —
+      # utilise les requêtes "security-extended" pour une couverture plus large
       - name: Initialiser CodeQL (javascript-typescript)
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
           queries: security-extended
 
+      # Analyse le code source TypeScript/JavaScript à la recherche de failles
+      # (injections, XSS, rate limiting manquant, etc.) et publie les résultats
+      # dans Security → Code scanning alerts sur GitHub
       - name: Analyse CodeQL (javascript-typescript)
         uses: github/codeql-action/analyze@v3
         with:
           category: /language:javascript-typescript
 
+      # Prépare CodeQL pour analyser les fichiers de workflow GitHub Actions eux-mêmes
       - name: Initialiser CodeQL (actions)
         uses: github/codeql-action/init@v3
         with:
           languages: actions
           build-mode: none
 
+      # Analyse les fichiers .yml du pipeline CI/CD pour détecter des vulnérabilités
+      # dans les workflows (injection de commandes, secrets exposés, etc.)
       - name: Analyse CodeQL (actions)
         uses: github/codeql-action/analyze@v3
         with:
@@ -175,36 +206,43 @@ jobs:
   # ─────────────────────────────────────────────
   deploy:
     name: Déploiement
+    # Attend que les Jobs 2 ET 3 soient verts — le code doit être testé ET sécurisé
     needs: [test, security]
+    # Ne se déclenche que sur push direct sur main, pas sur les pull requests
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
+      # Nouveau clone du code sur une machine virtuelle fraîche
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Installe Node.js 20 (sans cache ici — le deploy n'en a pas besoin)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # Installe la CLI Vercel globalement pour pouvoir utiliser les commandes vercel
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
+      # Installe les dépendances frontend — indispensable car vercel build va
+      # appeler vite qui se trouve dans node_modules/.bin
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      # vercel pull/build/deploy doivent tourner depuis la RACINE du repo
-      # pour que Vercel applique correctement le rootDirectory=frontend
-      # configuré sur le dashboard (sinon il cherche dans frontend/frontend/)
+      # Télécharge la configuration du projet Vercel (settings, variables d'env de prod)
+      # Doit tourner depuis la racine du repo pour que Vercel trouve le bon rootDirectory
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      # Build du frontend — VITE_API_URL pointe vers le backend Railway
+      # Compile le frontend React/TypeScript en fichiers statiques optimisés —
+      # VITE_API_URL est injectée ici et figée dans le bundle JavaScript
       - name: Build frontend
         run: |
           export PATH="$PWD/frontend/node_modules/.bin:$PATH"
@@ -214,7 +252,8 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
-      # Upload du build vers Vercel
+      # Envoie le dossier déjà compilé vers Vercel sans recompiler —
+      # le backend Railway se déploie automatiquement en parallèle via "Wait for CI"
       - name: Deploy vers Vercel
         run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
         env:
