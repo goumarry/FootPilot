@@ -1,19 +1,21 @@
-import * as Brevo from '@getbrevo/brevo';
+import { BrevoClient, BrevoEnvironment } from '@getbrevo/brevo';
 
-const apiInstance = new Brevo.TransactionalEmailsApi();
-apiInstance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY ?? '';
+const client = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY ?? '',
+  environment: BrevoEnvironment.Default,
+});
 
 const SENDER_EMAIL = process.env.SMTP_FROM ?? 'yoanngoumarre26@gmail.com';
 const SENDER_NAME = 'FootPilot';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000';
 
-async function sendEmail(to: string | string[], subject: string, html: string) {
+async function sendEmail(to: string | string[], subject: string, htmlContent: string) {
   const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({ email }));
-  await apiInstance.sendTransacEmail({
+  await client.transactionalEmails.sendTransacEmail({
     sender: { email: SENDER_EMAIL, name: SENDER_NAME },
     to: recipients,
     subject,
-    htmlContent: html,
+    htmlContent,
   });
 }
 
