@@ -5,7 +5,7 @@ import { I18nProvider } from '@/contexts/I18nContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { BillingProvider } from '@/contexts/BillingContext';
 import RequireAuth from '@/components/layout/RequireAuth';
-//changement front
+
 // Public
 import SplashPage from '@/pages/SplashPage';
 import LoginPage from '@/pages/LoginPage';
