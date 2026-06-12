@@ -4,7 +4,7 @@ import { Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { verifyToken, requireRole } from '../middleware/auth';
 import { sendActualiteEmail } from '../lib/email';
-
+// test cicd
 const router = Router();
 router.use(verifyToken);
 
