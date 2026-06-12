@@ -1,6 +1,4 @@
-# Étude de cas CI/CD — FootPilot
-
----
+# Étude de cas CI/CD - FootPilot
 
 ## 1. Description du projet
 
@@ -8,8 +6,8 @@
 
 L'application est organisée en monorepo avec deux parties distinctes :
 
-- **Frontend** : React 18 + Vite + TypeScript + Tailwind CSS — interface utilisateur responsive
-- **Backend** : Node.js + Express + TypeScript + Prisma ORM — API REST
+- **Frontend** : React 18 + Vite + TypeScript + Tailwind CSS - interface utilisateur responsive
+- **Backend** : Node.js + Express + TypeScript + Prisma ORM - API REST
 - **Base de données** : PostgreSQL 16
 
 Trois rôles utilisateur existent : `GESTIONNAIRE` (admin du club), `ENTRAINEUR` et `JOUEUR`, chacun avec des accès différents à l'application.
@@ -32,25 +30,25 @@ La mise en place d'une chaîne CI/CD sur ce projet répond à quatre objectifs p
 
 ## 3. Choix des outils CI/CD
 
-### GitHub Actions — Orchestration du pipeline
+### GitHub Actions - Orchestration du pipeline
 
 **GitHub Actions** a été choisi comme outil principal d'orchestration car le code est déjà hébergé sur GitHub. L'intégration est native : aucune infrastructure supplémentaire à configurer, la facturation est incluse dans le plan GitHub, et les workflows se déclenchent automatiquement sur les événements du dépôt (push, pull request).
 
 Comparé à des alternatives comme **Jenkins** (nécessite un serveur dédié à maintenir) ou **GitLab CI** (nécessiterait de migrer vers GitLab), GitHub Actions offre le meilleur rapport simplicité/puissance pour un projet de cette taille.
 
-### Vercel — Hébergement du frontend
+### Vercel - Hébergement du frontend
 
 **Vercel** est la plateforme de référence pour déployer des applications React/Vite. Elle détecte automatiquement le framework, optimise le build et distribue les fichiers statiques via un CDN mondial. Le déploiement se fait en quelques secondes et l'HTTPS est configuré automatiquement.
 
-### Railway — Hébergement du backend et de la base de données
+### Railway - Hébergement du backend et de la base de données
 
 **Railway** permet de déployer une application Node.js à partir d'un `Dockerfile` et d'héberger une base de données PostgreSQL managée dans le même environnement. C'est la solution la plus simple pour déployer un backend avec base de données sans gérer de serveur.
 
-### CodeQL — Analyse de sécurité statique (SAST)
+### CodeQL - Analyse de sécurité statique (SAST)
 
 **CodeQL** est l'outil d'analyse statique de sécurité de GitHub. Il analyse le code source pour détecter des vulnérabilités connues (injections SQL, XSS, exposition de données sensibles, absence de rate limiting, etc.). Il est intégré nativement dans GitHub Actions et publie ses résultats directement dans l'onglet **Security → Code scanning** du dépôt.
 
-### npm audit — Audit des dépendances
+### npm audit - Audit des dépendances
 
 **npm audit** vérifie les dépendances du projet contre la base de données publique de vulnérabilités npm (CVE). Il est exécuté sur le frontend et le backend, et bloque le pipeline si une vulnérabilité de niveau `high` ou `critical` est détectée.
 
@@ -85,15 +83,15 @@ Push sur main
      └───────────────┘
 ```
 
-**Job 1 — Lint & TypeScript** (bloquant pour tout le reste)
+**Job 1 - Lint & TypeScript** (bloquant pour tout le reste)
 
 Ce job vérifie que le code respecte les règles de style et de typage définies dans le projet. Il exécute ESLint sur le frontend et le backend pour détecter les erreurs de code (variables non utilisées, imports manquants, mauvaises pratiques React), puis le compilateur TypeScript en mode `--noEmit` pour valider le typage sans produire de fichiers. Si une seule erreur est détectée, le pipeline s'arrête immédiatement : il est inutile de tester ou déployer du code mal typé.
 
-**Job 2 — Tests unitaires** (en parallèle du Job 3)
+**Job 2 - Tests unitaires** (en parallèle du Job 3)
 
 Ce job exécute les tests automatisés du projet. Le frontend utilise **Vitest** (compatible avec l'écosystème Vite), et le backend utilise **Jest** avec **Supertest** pour tester les routes API. Les tests backend mockent Prisma pour ne pas dépendre d'une vraie base de données en CI. Ce job nécessite que le Job 1 soit vert avant de démarrer.
 
-**Job 3 — Analyse de sécurité** (en parallèle du Job 2)
+**Job 3 - Analyse de sécurité** (en parallèle du Job 2)
 
 Ce job comprend deux types d'analyses complémentaires :
 
@@ -101,7 +99,7 @@ Ce job comprend deux types d'analyses complémentaires :
 
 - **CodeQL** : analyse statique du code TypeScript/JavaScript à la recherche de failles de sécurité (injections, absence de contrôle d'accès, rate limiting manquant, etc.). CodeQL analyse également les fichiers de workflow GitHub Actions eux-mêmes pour détecter des failles dans le pipeline CI/CD. Les résultats sont publiés dans l'interface GitHub Security.
 
-**Job 4 — Déploiement** (uniquement sur push `main`, après Jobs 2 et 3)
+**Job 4 - Déploiement** (uniquement sur push `main`, après Jobs 2 et 3)
 
 Ce job ne s'exécute que si les Jobs 2 et 3 sont tous les deux verts, et uniquement sur des pushs directs sur `main` (pas sur les pull requests). Il déploie :
 
@@ -122,15 +120,8 @@ Les tests et l'analyse de sécurité sont indépendants l'un de l'autre. Les ex�
 
 **Pourquoi utiliser Vercel CLI dans la CI plutôt que le déploiement automatique Vercel ?**
 
-Le frontend utilise une variable d'environnement (`VITE_API_URL`) qui est intégrée dans le bundle JavaScript au moment du build — c'est une particularité de Vite. Si Vercel faisait le build lui-même, cette variable devrait être configurée sur le dashboard Vercel. En faisant le build dans la CI GitHub Actions avec la variable stockée dans les secrets GitHub, on garde une source de vérité unique et on évite de dupliquer la configuration.
+Le frontend utilise une variable d'environnement (`VITE_API_URL`) qui est intégrée dans le bundle JavaScript au moment du build - c'est une particularité de Vite. Si Vercel faisait le build lui-même, cette variable devrait être configurée sur le dashboard Vercel. En faisant le build dans la CI GitHub Actions avec la variable stockée dans les secrets GitHub, on garde une source de vérité unique et on évite de dupliquer la configuration.
 
-**Pourquoi avoir remplacé SMTP (Gmail) par Brevo pour les emails transactionnels ?**
-
-En production, Railway (comme la plupart des hébergeurs cloud) bloque les connexions SMTP sortantes sur le port 587 pour prévenir le spam. Brevo communique via une API HTTP (pas SMTP), ce qui contourne cette restriction. De plus, Brevo permet de vérifier une adresse email expéditeur sans nécessiter la propriété d'un domaine complet, ce qui est adapté à un projet en cours de développement.
-
-**Pourquoi le rate limiting sur les routes sensibles ?**
-
-CodeQL a détecté l'absence de rate limiting sur la route `/api/statistiques`, qui effectue une vérification d'autorisation. Sans limitation, un attaquant peut envoyer des milliers de requêtes par seconde pour tenter de contourner l'authentification (attaque par force brute) ou simplement surcharger le serveur. La limite de 100 requêtes par 15 minutes par IP est suffisante pour un usage normal tout en bloquant les abus.
 
 ---
 
@@ -142,7 +133,7 @@ Cette section explique précisément à quel moment les dépendances sont instal
 
 Chaque job GitHub Actions tourne sur une **machine virtuelle fraîche**. Cela signifie que les `node_modules` installés dans le Job 1 ne sont pas disponibles dans le Job 2. Chaque job doit donc réinstaller les dépendances dont il a besoin. C'est une contrainte de l'architecture de GitHub Actions, compensée par un système de **cache** sur le `package-lock.json` pour éviter de retélécharger les packages à chaque fois.
 
-### Job 1 — Lint & TypeScript
+### Job 1 - Lint & TypeScript
 
 | Étape | Ce qui se passe |
 |-------|----------------|
@@ -150,35 +141,35 @@ Chaque job GitHub Actions tourne sur une **machine virtuelle fraîche**. Cela si
 | `actions/setup-node` | Node.js 20 est installé, le cache npm est configuré |
 | `npm ci` (frontend) | Les dépendances du frontend sont installées dans `frontend/node_modules/` |
 | `npm ci` (backend) | Les dépendances du backend sont installées dans `backend/node_modules/` |
-| `npm run lint` | ESLint analyse le code — **pas de compilation, pas de build** |
-| `npm run typecheck` | Le compilateur TypeScript vérifie les types (`tsc --noEmit`) — **pas de build**, il vérifie sans produire de fichiers |
+| `npm run lint` | ESLint analyse le code - **pas de compilation, pas de build** |
+| `npm run typecheck` | Le compilateur TypeScript vérifie les types (`tsc --noEmit`) - **pas de build**, il vérifie sans produire de fichiers |
 
 > **Pourquoi pas de build ici ?** Le lint et le typecheck n'ont pas besoin du code compilé. Compiler prendrait du temps inutilement à ce stade.
 
-### Job 2 — Tests unitaires
+### Job 2 - Tests unitaires
 
 | Étape | Ce qui se passe |
 |-------|----------------|
 | `actions/checkout` | Nouveau clone du code sur une nouvelle machine virtuelle |
 | `npm ci` (frontend + backend) | Réinstallation des dépendances (depuis le cache si disponible) |
-| `npm test` (frontend) | Vitest exécute les tests — il compile les fichiers TypeScript à la volée **en mémoire**, sans produire de `dist/` |
-| `npm test` (backend) | Jest + ts-jest fait la même chose — compilation en mémoire uniquement |
+| `npm test` (frontend) | Vitest exécute les tests - il compile les fichiers TypeScript à la volée **en mémoire**, sans produire de `dist/` |
+| `npm test` (backend) | Jest + ts-jest fait la même chose - compilation en mémoire uniquement |
 
 > **Pourquoi pas de build ici non plus ?** Vitest et Jest compilent le TypeScript en mémoire pendant l'exécution des tests. Produire un vrai build serait une étape supplémentaire inutile pour juste exécuter des tests.
 
-### Job 3 — Sécurité
+### Job 3 - Sécurité
 
 | Étape | Ce qui se passe |
 |-------|----------------|
 | `actions/checkout` | Nouveau clone du code |
-| `npm ci` (frontend + backend) | Réinstallation des dépendances — nécessaire pour que `npm audit` puisse lire l'arbre des dépendances installées |
-| `npm run audit` | Analyse les `node_modules` installés contre la base de données CVE — **pas de build** |
+| `npm ci` (frontend + backend) | Réinstallation des dépendances - nécessaire pour que `npm audit` puisse lire l'arbre des dépendances installées |
+| `npm run audit` | Analyse les `node_modules` installés contre la base de données CVE - **pas de build** |
 | CodeQL init | CodeQL prépare son environnement d'analyse |
-| CodeQL analyze | CodeQL lit le code source TypeScript directement — **pas besoin de build** pour les langages interprétés/transpilés |
+| CodeQL analyze | CodeQL lit le code source TypeScript directement - **pas besoin de build** pour les langages interprétés/transpilés |
 
 > **Pourquoi installer les dépendances pour npm audit ?** `npm audit` a besoin que les dépendances soient installées pour construire l'arbre complet des dépendances transitives (les dépendances de dépendances).
 
-### Job 4 — Déploiement
+### Job 4 - Déploiement
 
 C'est le seul job où un vrai build est produit. Il ne s'exécute que sur push direct sur `main`.
 
@@ -186,10 +177,10 @@ C'est le seul job où un vrai build est produit. Il ne s'exécute que sur push d
 |-------|----------------|
 | `actions/checkout` | Nouveau clone du code |
 | `npm install -g vercel` | La CLI Vercel est installée globalement |
-| `npm ci` (frontend) | Les dépendances du frontend sont installées — **indispensable** car le build va en avoir besoin |
+| `npm ci` (frontend) | Les dépendances du frontend sont installées - **indispensable** car le build va en avoir besoin |
 | `vercel pull` | La CLI Vercel télécharge la configuration du projet depuis le dashboard Vercel (variables d'environnement de production, paramètres) |
 | `vercel build --prod` | **Le vrai build du frontend** : Vite compile tout le TypeScript + React en fichiers JavaScript optimisés dans `.vercel/output/`. La variable `VITE_API_URL` (URL du backend Railway) est injectée et figée dans le bundle à ce moment précis |
-| `vercel deploy --prebuilt` | Le dossier `.vercel/output/` déjà compilé est envoyé vers les serveurs Vercel — **pas de recompilation chez Vercel**, il déploie ce qu'on lui envoie |
+| `vercel deploy --prebuilt` | Le dossier `.vercel/output/` déjà compilé est envoyé vers les serveurs Vercel - **pas de recompilation chez Vercel**, il déploie ce qu'on lui envoie |
 
 > **Pourquoi le backend n'est pas buildé dans la CI ?** Railway gère lui-même le build du backend. Quand Railway détecte un nouveau commit sur `main` après que la CI est verte, il exécute le `Dockerfile` du backend qui : (1) compile le TypeScript en JavaScript (`npm run build` → `dist/`), (2) applique le schéma Prisma sur la base de données (`prisma db push`), (3) démarre le serveur Express. Tout cela se passe directement chez Railway, pas dans GitHub Actions.
 
@@ -198,7 +189,7 @@ C'est le seul job où un vrai build est produit. Il ne s'exécute que sur push d
 ```
                     MACHINE VIRTUELLE FRAÎCHE à chaque job
                     ┌─────────────────────────────────────┐
-Job 1 (Lint)        │ checkout → npm ci → lint → typecheck │  Pas de build
+Job 1 (Lint)        │ checkout → npm ci → lint → typecheck│  Pas de build
                     └─────────────────────────────────────┘
                     ┌─────────────────────────────────────┐
 Job 2 (Tests)       │ checkout → npm ci → tests en mémoire│  Pas de build
@@ -207,7 +198,8 @@ Job 2 (Tests)       │ checkout → npm ci → tests en mémoire│  Pas de bui
 Job 3 (Sécurité)    │ checkout → npm ci → audit → CodeQL  │  Pas de build
                     └─────────────────────────────────────┘
                     ┌─────────────────────────────────────┐
-Job 4 (Deploy)      │ checkout → npm ci → vercel build ✓  │  Build frontend ici
-                    │              → vercel deploy         │  Build backend chez Railway
+Job 4 (Deploy)      │ checkout → npm ci → vercel build    │  Build frontend ici
+                    │              → vercel deploy        │  
                     └─────────────────────────────────────┘
+                    Build backend chez Railway
 ```
