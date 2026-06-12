@@ -1,9 +1,21 @@
-import { Resend } from 'resend';
+import * as Brevo from '@getbrevo/brevo';
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder');
+const apiInstance = new Brevo.TransactionalEmailsApi();
+apiInstance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY ?? '';
 
-const FROM = process.env.SMTP_FROM ?? 'FootPilot <onboarding@resend.dev>';
+const SENDER_EMAIL = process.env.SMTP_FROM ?? 'yoanngoumarre26@gmail.com';
+const SENDER_NAME = 'FootPilot';
 const APP_URL = process.env.APP_URL ?? 'http://localhost:3000';
+
+async function sendEmail(to: string | string[], subject: string, html: string) {
+  const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({ email }));
+  await apiInstance.sendTransacEmail({
+    sender: { email: SENDER_EMAIL, name: SENDER_NAME },
+    to: recipients,
+    subject,
+    htmlContent: html,
+  });
+}
 
 export async function sendInvitationEmail(opts: {
   to: string;
@@ -20,11 +32,10 @@ export async function sendInvitationEmail(opts: {
     JOUEUR: 'Joueur',
   };
 
-  await resend.emails.send({
-    from: FROM,
-    to: opts.to,
-    subject: `Invitation FootPilot — ${opts.clubNom}`,
-    html: `
+  await sendEmail(
+    opts.to,
+    `Invitation FootPilot — ${opts.clubNom}`,
+    `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
         <h2 style="color:#4C1D95;">FootPilot</h2>
         <p>Bonjour <strong>${opts.firstName} ${opts.lastName}</strong>,</p>
@@ -40,8 +51,8 @@ export async function sendInvitationEmail(opts: {
           Ou copiez ce lien : <a href="${link}">${link}</a>
         </p>
       </div>
-    `,
-  });
+    `
+  );
 }
 
 export async function sendEmailVerificationMail(opts: {
@@ -51,11 +62,10 @@ export async function sendEmailVerificationMail(opts: {
 }) {
   const link = `${APP_URL}/verify-email/${opts.token}`;
 
-  await resend.emails.send({
-    from: FROM,
-    to: opts.to,
-    subject: 'FootPilot — Confirmez votre adresse e-mail',
-    html: `
+  await sendEmail(
+    opts.to,
+    'FootPilot — Confirmez votre adresse e-mail',
+    `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
         <h2 style="color:#4C1D95;">FootPilot</h2>
         <p>Bonjour <strong>${opts.firstName}</strong>,</p>
@@ -70,8 +80,8 @@ export async function sendEmailVerificationMail(opts: {
         </p>
         <p style="color:#9390B0;font-size:12px;">Si vous n'avez pas créé de compte FootPilot, ignorez cet e-mail.</p>
       </div>
-    `,
-  });
+    `
+  );
 }
 
 export async function sendActualiteEmail(opts: {
@@ -83,17 +93,16 @@ export async function sendActualiteEmail(opts: {
 }) {
   if (opts.to.length === 0) return;
 
-  await resend.emails.send({
-    from: FROM,
-    to: opts.to,
-    subject: `[${opts.clubNom}] ${opts.titre}`,
-    html: `
+  await sendEmail(
+    opts.to,
+    `[${opts.clubNom}] ${opts.titre}`,
+    `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
         <h2 style="color:#4C1D95;">FootPilot — ${opts.clubNom}</h2>
         <h3>${opts.titre}</h3>
         <p>${opts.contenu.replace(/\n/g, '<br>')}</p>
         <p style="color:#9390B0;font-size:12px;">Publié par ${opts.auteur}</p>
       </div>
-    `,
-  });
+    `
+  );
 }

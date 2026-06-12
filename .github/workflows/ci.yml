@@ -94,7 +94,7 @@ jobs:
         run: npm test
         env:
           JWT_SECRET: test_secret_ci
-          RESEND_API_KEY: re_placeholder
+          BREVO_API_KEY: brevo_placeholder
 
   # ─────────────────────────────────────────────
   # Job 3 : Sécurité — npm audit + CodeQL
