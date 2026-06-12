@@ -25,8 +25,8 @@ test.describe('Navigation sidebar (GESTIONNAIRE)', () => {
 
   test('bouton Déconnexion redirige vers /', async ({ page }) => {
     await page.goto('/admin');
-    // Scoper à l'aside pour éviter les doublons mobile/desktop
-    await page.locator('aside').locator('button', { hasText: 'Déconnexion' }).click();
+    // Pas de BottomNav logout — bouton unique sur la page, pas besoin de scope aside
+    await page.locator('button').filter({ hasText: 'Déconnexion' }).click();
     await expect(page).toHaveURL('/');
   });
 });

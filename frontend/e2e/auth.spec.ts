@@ -40,7 +40,9 @@ test.describe('Authentification', () => {
   test("identifiants incorrects affiche un message d'erreur", async ({ page }) => {
     await page.route('/api/auth/login', (route) =>
       route.fulfill({
-        status: 401,
+        // 400 et non 401 — l'intercepteur Axios redirige vers /login sur 401,
+        // ce qui efface le state React avant que l'erreur soit affichée
+        status: 400,
         json: { message: 'Email ou mot de passe incorrect' },
       }),
     );
