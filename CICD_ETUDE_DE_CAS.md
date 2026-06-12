@@ -1,4 +1,4 @@
-# Étude de cas CI/CD - FootPilot
+# Étude de cas CI/CD - FootPilot l'appli
 
 ## 1. Description du projet
 
