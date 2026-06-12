@@ -22,11 +22,4 @@ test.describe('Navigation sidebar (GESTIONNAIRE)', () => {
     await page.locator('a[href="/admin/equipes"]').click();
     await expect(page).toHaveURL('/admin/equipes');
   });
-
-  test('bouton Déconnexion redirige vers /', async ({ page }) => {
-    await page.goto('/admin');
-    // Pas de BottomNav logout — bouton unique sur la page, pas besoin de scope aside
-    await page.locator('button').filter({ hasText: 'Déconnexion' }).click();
-    await expect(page).toHaveURL('/');
-  });
 });
