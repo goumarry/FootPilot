@@ -8,3 +8,6 @@ node_modules/
 dist/
 
 cahier_des_charges_integration_continue.md
+
+frontend/playwright-report/
+frontend/test-results/

@@ -18,7 +18,7 @@ test.describe('Authentification', () => {
     await page.goto('/login');
     await page.getByPlaceholder('votre@email.com').fill('gestionnaire@test.com');
     await page.getByPlaceholder('••••••••').fill('password123');
-    await page.getByRole('button', { name: /se connecter/i }).click();
+    await page.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL('/admin');
   });
@@ -32,12 +32,12 @@ test.describe('Authentification', () => {
     await page.goto('/login');
     await page.getByPlaceholder('votre@email.com').fill('joueur@test.com');
     await page.getByPlaceholder('••••••••').fill('password123');
-    await page.getByRole('button', { name: /se connecter/i }).click();
+    await page.locator('button[type="submit"]').click();
 
     await expect(page).toHaveURL('/dashboard');
   });
 
-  test('identifiants incorrects affiche un message d\'erreur', async ({ page }) => {
+  test("identifiants incorrects affiche un message d'erreur", async ({ page }) => {
     await page.route('/api/auth/login', (route) =>
       route.fulfill({
         status: 401,
@@ -48,7 +48,7 @@ test.describe('Authentification', () => {
     await page.goto('/login');
     await page.getByPlaceholder('votre@email.com').fill('mauvais@test.com');
     await page.getByPlaceholder('••••••••').fill('mauvais');
-    await page.getByRole('button', { name: /se connecter/i }).click();
+    await page.locator('button[type="submit"]').click();
 
     await expect(page.getByText('Email ou mot de passe incorrect')).toBeVisible();
     await expect(page).toHaveURL('/login');
