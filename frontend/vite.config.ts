@@ -25,6 +25,6 @@ export default defineConfig({
   },
   test: {
     // Empêche Vitest de ramasser les fichiers Playwright
-    exclude: ['**/node_modules/**', 'e2e/**'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
   },
 });
