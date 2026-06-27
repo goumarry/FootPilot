@@ -1,20 +1,10 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma';
 import { verifyToken } from '../middleware/auth';
 import { requireSubscription } from '../middleware/billing';
 
 const router = Router();
 
-const statsRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Trop de requêtes, veuillez réessayer plus tard.' },
-});
-
-router.use(statsRateLimit);
 router.use(verifyToken);
 
 const joueurStatsInclude = {

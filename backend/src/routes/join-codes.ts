@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { randomBytes } from 'crypto';
+import { randomInt } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
@@ -11,8 +11,10 @@ const router = Router();
 
 const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function generateCode(): string {
-  const bytes = randomBytes(6);
-  return Array.from(bytes).map((b) => CHARS[b % CHARS.length]).join('');
+  // randomInt est non biaisé (rejection sampling) — évite le biais de `byte % CHARS.length`
+  let code = '';
+  for (let i = 0; i < 6; i++) code += CHARS[randomInt(CHARS.length)];
+  return code;
 }
 
 // --- Rate limiting in-memory ---
