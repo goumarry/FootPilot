@@ -49,7 +49,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLocaleState(l);
   }, []);
 
-  const t = useCallback((key: string) => resolve(translations[locale], key), [locale]);
+  // Les fichiers autres que fr.json sont gelés : toute clé absente de la locale
+  // courante retombe sur le français au lieu d'afficher la clé brute
+  const t = useCallback((key: string) => {
+    const value = resolve(translations[locale], key);
+    if (value === key && locale !== 'fr') return resolve(translations.fr, key);
+    return value;
+  }, [locale]);
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>
